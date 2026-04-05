@@ -1,0 +1,58 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.env
+
+# ── Generated CAD exports (run scripts/build_exports.py to regenerate) ────────
+exports/step/
+exports/stl/
+exports/svg/
+exports/dxf/
+!exports/.gitkeep
+!exports/step/.gitkeep
+!exports/stl/.gitkeep
+!exports/svg/.gitkeep
+!exports/dxf/.gitkeep
+
+# ── Renders (use CI artifacts or Git LFS for renders > 1 MB) ─────────────────
+renders/assembly/
+renders/components/
+!renders/.gitkeep
+!renders/assembly/.gitkeep
+!renders/components/.gitkeep
+
+# ── Manufacturing generated outputs ──────────────────────────────────────────
+# PDFs/DXF drawings are regenerated from scripts — commit only the .md source + CSV BOM
+manufacturing/drawings/*.pdf
+manufacturing/drawings/*.dxf
+manufacturing/bom/*.xlsx
+!manufacturing/drawings/.gitkeep
+!manufacturing/bom/.gitkeep
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/settings.json
+*.kate-swp
+
+# ── CadQuery / OCP scratch files ──────────────────────────────────────────────
+*.brep
+*.log
+cq_editor_session.py
+ocp_vscode_session.py
+
+# ── Large reference binaries: track with Git LFS instead ────────────────────
+# git lfs track "refs/**/*.pdf"
+# git lfs track "renders/**/*.png"
+refs/**/*.pdf
+refs/**/*.zip

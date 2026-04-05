@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "conical-filter-shaper"
+version = "0.1.0"
+description = "CadQuery parametric CAD for the Universal Conical Coffee Filter Shaping Tool"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "cadquery>=2.4,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-xdist",      # parallel test execution
+    "rich",              # pretty CLI output for scripts
+    "typer",             # CLI interface for scripts/
+    "openpyxl",          # BOM Excel export
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cad*"]
