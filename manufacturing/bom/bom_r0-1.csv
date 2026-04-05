@@ -1,0 +1,20 @@
+item_no,part_name,qty,material,process,source_file,notes
+1,Half-Shell L,1,POM-C (Acetal Copolymer) — food-grade,CNC milled,cad/components/shell_half_l.py,
+2,Half-Shell R,1,POM-C (Acetal Copolymer) — food-grade,CNC milled,cad/components/shell_half_r.py,Includes fin slot
+3,Tip Insert Block,1,"SS 316L — CNC turned + milled, electropolished",CNC turned + milled,cad/components/tip_insert_block.py,
+4,Apex Hinge Pin,1,SS 316L,Shoulder bolt,,"M3 × 20 mm SS 316L shoulder bolt, DIN 6912, head flush"
+5,Cam Follower Pin L,1,SS 316L,Shoulder bolt,,"M4 SS 316L shoulder bolt, 4 mm shoulder Ø × 5 mm"
+6,Cam Follower Pin R,1,SS 316L,Shoulder bolt,,"M4 SS 316L shoulder bolt, 4 mm shoulder Ø × 5 mm"
+7,Angle-Set Ring,1,"6061-T6 Aluminium — Type II anodized, hard-black",CNC milled + Type II anodize,cad/components/cam_ring.py,Mask detent dimples before anodize
+8,Handle Housing,1,6061-T6 Aluminium — CNC turned + milled + Type II anodize,CNC turned + milled,cad/components/handle_housing.py,Mask all tapped holes before anodize
+9,Handle Grip Insert,1,NBR-70 or TPU Shore-A70,Moulded / laser-cut,cad/components/handle_grip_insert.py,
+10,Detent Ball,1,SS 316L grade G25,Bought-in,,Ø4.0 mm
+11,Detent Spring,1,SS 302,Bought-in,,FL 10.0 mm
+12,Detent Set Screw,1,SS 316L,Bought-in,,"M4 × 8 mm SS 316L grub screw DIN 913, Loctite 243"
+13,Seam Guide Fin,1,SS 301 half-hard spring steel — laser-cut + press-formed,Laser cut (do NOT anneal after cut),cad/components/overlap_fin.py,
+14,Ejection Push Rod,1,"SS 304 — CNC turned, h6 ground finish",CNC turned,cad/components/ejection_rod.py,
+15,Ejection Return Spring,1,SS 302,Bought-in,,FL 15.0 mm
+16,Ejection Button Cap,1,"POM-C — CNC turned, knurled rim",CNC turned,cad/components/ejection_rod.py (button sub-feature),
+17,Base Cap / Ring Retainer,1,"6061-T6 Al, Type II anodize",CNC turned + anodize,cad/components/base_cap.py,
+18,Ring Bearing Washer,2,PTFE,Punched,,"PTFE, 0.5 mm thick, ID to clear ring bore"
+19,Assembly Screws M3 SHCS,4,SS 316L,Bought-in,,"M3 SHCS ISO 4762, SS 316L, qty 4"
