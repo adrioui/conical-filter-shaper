@@ -1,19 +1,18 @@
 # CadQuery Modeling Plan — V1
 
-This repo uses **CadQuery as the source of truth** for the Universal Conical Filter Shaping Tool.
+This repo uses **CadQuery as the source of truth** for the Universal Filter Ruler.
 
-V1 workflow assumes **standard pre-seamed conical paper filters**, with common 02-class
-papers and the 60° preset as the primary modeling reference.
+V1 workflow assumes **adjustable angle measurement for coffee filter folding** with angle range40°–85°.
 
 ---
 
 ## Modeling goals
 
 V1 needs to support:
-- indexed presets: **48° / 60° / 80°**
-- parametric shell geometry
-- tip locator and release mechanism
-- cam ring and detent system
+- adjustable angle range: **40°–85°**
+- sliding arm mechanism with cam lock
+- magnetic marker system for presets
+- laser-etched angle and vernier scales
 - export pipeline for STEP/STL/DXF/SVG
 
 ---
@@ -26,12 +25,12 @@ All geometry must derive from `cad/params.py`.
 Never hardcode dimensions in component files.
 
 Examples of parameter groups:
-- shell geometry
-- preset angles
-- ring and cam geometry
-- detent geometry
-- seam-guide fin dimensions
-- ejection system dimensions
+- base plate geometry
+- sliding arm dimensions
+- T-slot specifications
+- cam lock geometry
+- magnetic marker dimensions
+- angle scale parameters
 
 ---
 
@@ -40,20 +39,18 @@ Examples of parameter groups:
 Each physical part gets its own builder in `cad/components/`.
 
 Current component targets:
-- `shell_half_l.py`
-- `shell_half_r.py`
-- `tip_insert_block.py`
-- `cam_ring.py`
-- `handle_housing.py`
-- `overlap_fin.py`
-- `ejection_rod.py`
-- `base_cap.py`
-- `handle_grip_insert.py`
+- `base_plate.py` ✅
+- `sliding_arm.py` ✅
+- `cam_lock.py` ✅
+- `magnetic_marker.py` ✅
+- `ferrous_strip.py` ✅
+- `ptfe_slide_strip.py` ✅
 
 ### Expected interface
 
 ```python
-def build(params=None, preset=None):
+def build():
+    """Build and return the component as a CadQuery Workplane."""
     ...
 ```
 
@@ -64,15 +61,18 @@ def build(params=None, preset=None):
 Assemblies live in `cad/assemblies/`.
 
 Targets:
-- `mandrel_assy.py`
-- `ring_assy.py`
-- `ejection_assy.py`
-- `full_assy.py`
+- `arm_assy.py` ✅— Sliding arm + cam lock + PTFE
+- `full_assy.py` ✅ — Complete ruler assembly
 
 ### Expected interface
 
 ```python
-def build(params=None, preset=None):
+def build(angle_deg=60.0):
+    """Build assembly at specified angle."""
+    ...
+
+def build(side="left"):
+    """Build left or right arm assembly."""
     ...
 ```
 
@@ -80,86 +80,59 @@ def build(params=None, preset=None):
 
 ## 4. Utility modules
 
-Utilities in `cad/utils/` should stay pure and reusable.
+Utilities in `cad/` should stay pure and reusable.
 
-Current math/system helpers:
-- `cone_math.py`
-- `cam_geometry.py`
-- `tolerances.py`
+Current math helper:
+- `ruler_math.py` — Geometric calculations for arm positions
 
-These are ideal for agent-driven development because they are:
+This is ideal for agent-driven development because it is:
 - testable without CadQuery geometry
 - deterministic
 - easy to evolve before solids exist
 
 ---
 
-## Preset strategy
+## Angle range strategy
 
-Use **named presets**, not raw angle literals everywhere.
+Use **continuous angle range**, not discrete presets.
 
-Current presets in `cad/params.py`:
-- `PRESET_1` → 48°
-- `PRESET_2` → 60°
-- `PRESET_3` → 80°
+Range: 40°–85° (included angle between arm inner edges)
 
 ### Modeling rule
-- shell geometry depends on preset
-- ring contains all preset logic
-- handle / eject system are mostly preset-independent
+- arms pivot from center-top of base plate
+- angle determines arm spread via `ruler_math.arm_position_at_angle()`
+- magnetic markers allow users to mark preset angles for quick recall
 
 ---
 
 ## Build order
 
-## Milestone 0 — math + validation
-- cone conversions
-- base radius checks
-- cam dwell spacing
-- detent proportions
-- tolerance stack checks
+## Milestone 0 — math + validation ✅
+- arm position calculations
+- angle validation
+- tolerance checks
 
-## Milestone 1 — shell halves
-Model:
-- left shell
-- right shell
-- seam-relief / paper-registration features
-- base tab and follower interface
+## Milestone 1 — components ✅
+- base_plate
+- sliding_arm
+- cam_lock
+- magnetic_marker
+- ferrous_strip
+- ptfe_slide_strip
 
-## Milestone 2 — tip block + eject rod
-Model:
-- tip insert block
-- tip dimple
-- hinge bore
-- ejection bore and rod
+## Milestone 2 — assemblies ✅
+- arm_assy
+- full_assy
 
-## Milestone 3 — cam ring
-Model:
-- outer ring body
-- bore
-- dwell positions
-- transition geometry
-- detent dimples
-- labeling area / indicator logic
+## Milestone 3 — documentation 🔄
+- design_spec.md update
+- manufacturability.md update
+- BOM generation
 
-## Milestone 4 — handle housing
-Model:
-- ring capture
-- detent pocket
-- grip body
-- angle window
-
-## Milestone 5 — assemblies
-Build:
-- mandrel assembly
-- ring assembly
-- full assembly
-
-## Milestone 6 — export automation
-Generate:
-- STEP
-- STL
-- DXF / SVG where relevant
+## Milestone 4 — export automation
+- STEP exports
+- STL exports
+- DXF/SVG for 2D profiles
 
 ---
 
@@ -178,6 +151,7 @@ The intended agent workflow is:
 pytest tests/ -v
 python scripts/validate_geometry.py
 python scripts/build_exports.py
+python scripts/gen_bom.py
 ```
 
 ---
@@ -185,11 +159,10 @@ python scripts/build_exports.py
 ## Testing priorities
 
 Automated checks should cover:
-- angle accuracy
-- shell base diameter
-- cam dwell radii
-- detent geometry
-- ejection stroke vs recess
+- angle range validation (40°–85°)
+- arm position symmetry
+- T-slot engagement fit
+- cam lock position
 - assembly clearances
 
 ---
@@ -198,16 +171,16 @@ Automated checks should cover:
 
 ### Start here
 1. `cad/params.py`
-2. `cad/utils/cone_math.py`
-3. `cad/utils/cam_geometry.py`
-4. one simple component at a time
+2. `cad/ruler_math.py`
+3. One simple component at a time
 
-### Best first implemented parts
-1. `cam_ring.py`
-2. `tip_insert_block.py`
-3. `overlap_fin.py`
-4. `shell_half_l.py`
-5. `shell_half_r.py`
+### Implementation order
+1. `base_plate.py` — Foundation with T-slots
+2. `sliding_arm.py` — Moving part
+3. `cam_lock.py` — Lock mechanism
+4. `magnetic_marker.py` — Preset markers
+5. `ferrous_strip.py` — Marker track
+6. `ptfe_slide_strip.py` — Friction liner
 
 Why:
 - gives quick validation of exported solids

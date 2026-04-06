@@ -1,0 +1,11 @@
+item_no,part_name,qty,material,process,source_file,notes
+1,Base Plate,1,6061-T6 Aluminum,CNC milled → deburr → anodize → laser etch → paint fill,cad/components/base_plate.py,200.0×120.0×8.0mm
+2,Sliding Arm,2,6061-T6 Aluminum,CNC milled → deburr → anodize → laser etch,cad/components/sliding_arm.py,150.0×25.0×6.0mm
+3,Cam Lock Assembly,2,Stainless Steel 316 — passivated,"6061-T6 Aluminum — Type III hard anodize, matte black",cad/components/cam_lock.py,"90.0° throw, 25.0mm lever"
+4,Magnetic Marker,8,Anodized 6061-T6 aluminum housing + N52 neodymium magnet,"CNC turned housing, press-fit magnet + adhesive backup",cad/components/magnetic_marker.py,"Ø6.0×4.0mm, 8 total (4 colors×2)"
+5,Ferrous Track Strip,1,"Mild steel strip 180×6×1 mm, zinc plated",Laser cut,cad/components/ferrous_strip.py,180.0×8.0×1.0mm
+6,PTFE Slide Strip,2,PTFE (polytetrafluoroethylene),Die cut,cad/components/ptfe_slide_strip.py,180.0×6.0×0.5mm
+7,M3×8 SHCS,4,SS A2-70,Bought-in,,"M3×8 SHCS, SS A2-70"
+8,M5 Shoulder Bolt,2,SS 316,Bought-in,,"M5 shoulder bolt, SS 316"
+9,Belleville Washer M5,2,Spring steel,Bought-in,,"Belleville washer M5, spring steel"
+10,Silicone Foot Pad,4,"Silicone, adhesive-backed",Bought-in,,"Ø8.0mm, adhesive-backed"

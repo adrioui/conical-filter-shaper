@@ -35,26 +35,39 @@ class BomRow:
     notes: str = ""
 
 
+# Universal Filter Ruler Bill of Materials
+# Reference: vault/Bill of Materials.md
 BOM: list[BomRow] = [
-    BomRow(1,  "Half-Shell L",             1, P.SHELL_MATERIAL,          P.SHELL_PROCESS,         "cad/components/shell_half_l.py"),
-    BomRow(2,  "Half-Shell R",             1, P.SHELL_MATERIAL,          P.SHELL_PROCESS,         "cad/components/shell_half_r.py", "Includes fin slot"),
-    BomRow(3,  "Tip Insert Block",         1, P.TIP_MATERIAL,            P.TIP_PROCESS,           "cad/components/tip_insert_block.py"),
-    BomRow(4,  "Apex Hinge Pin",           1, "SS 316L",                 "Shoulder bolt",          "", P.HINGE_PIN_SPEC),
-    BomRow(5,  "Cam Follower Pin L",       1, "SS 316L",                 "Shoulder bolt",          "", P.FOLLOWER_PIN_SPEC),
-    BomRow(6,  "Cam Follower Pin R",       1, "SS 316L",                 "Shoulder bolt",          "", P.FOLLOWER_PIN_SPEC),
-    BomRow(7,  "Angle-Set Ring",           1, P.CAM_RING_MATERIAL,       P.CAM_RING_PROCESS,      "cad/components/cam_ring.py", "Mask detent dimples before anodize"),
-    BomRow(8,  "Handle Housing",           1, P.HOUSING_MATERIAL,        P.HOUSING_PROCESS,       "cad/components/handle_housing.py", "Mask all tapped holes before anodize"),
-    BomRow(9,  "Handle Grip Insert",       1, "NBR-70 or TPU Shore-A70", "Moulded / laser-cut",   "cad/components/handle_grip_insert.py"),
-    BomRow(10, "Detent Ball",              1, "SS 316L grade G25",        "Bought-in",             "", f"Ø{P.DETENT_BALL_DIAMETER_MM} mm"),
-    BomRow(11, "Detent Spring",            1, "SS 302",                  "Bought-in",             "", f"FL {P.DETENT_SPRING_FREE_LENGTH_MM} mm"),
-    BomRow(12, "Detent Set Screw",         1, "SS 316L",                 "Bought-in",             "", P.DETENT_SETSCREW_SPEC),
-    BomRow(13, "Seam Guide Fin",          1, P.FIN_MATERIAL,            P.FIN_PROCESS,           "cad/components/overlap_fin.py"),
-    BomRow(14, "Ejection Push Rod",        1, P.EJECTION_ROD_MATERIAL,   P.EJECTION_ROD_PROCESS,  "cad/components/ejection_rod.py"),
-    BomRow(15, "Ejection Return Spring",   1, "SS 302",                  "Bought-in",             "", f"FL {P.EJECTION_SPRING_FREE_LENGTH_MM} mm"),
-    BomRow(16, "Ejection Button Cap",      1, P.EJECTION_BUTTON_MATERIAL, "CNC turned",           "cad/components/ejection_rod.py (button sub-feature)"),
-    BomRow(17, "Base Cap / Ring Retainer", 1, "6061-T6 Al, Type II anodize", "CNC turned + anodize", "cad/components/base_cap.py"),
-    BomRow(18, "Ring Bearing Washer",      2, "PTFE",                    "Punched",               "", P.PTFE_WASHER_SPEC),
-    BomRow(19, "Assembly Screws M3 SHCS",  4, "SS 316L",                 "Bought-in",             "", P.ASSEMBLY_SCREWS_SPEC),
+    # ── Machined Components ──────────────────────────────────────────────────────
+    BomRow(1, "Base Plate", 1, P.BASE_MATERIAL, P.BASE_PROCESS,
+           "cad/components/base_plate.py",
+           f"{P.BASE_LENGTH_MM}×{P.BASE_WIDTH_MM}×{P.BASE_THICKNESS_MM}mm"),
+    BomRow(2, "Sliding Arm", 2, P.ARM_MATERIAL, P.ARM_PROCESS,
+           "cad/components/sliding_arm.py",
+           f"{P.ARM_LENGTH_MM}×{P.ARM_WIDTH_MM}×{P.ARM_THICKNESS_MM}mm"),
+    BomRow(3, "Cam Lock Assembly", P.CAM_COUNT, P.CAM_MATERIAL, P.CAM_LEVER_MATERIAL,
+           "cad/components/cam_lock.py",
+           f"{P.CAM_THROW_DEG}° throw, {P.CAM_LEVER_LENGTH_MM}mm lever"),
+    # ── Magnetic System ──────────────────────────────────────────────────────────
+    BomRow(4, "Magnetic Marker", P.MARKER_COUNT, P.MARKER_MATERIAL, P.MARKER_PROCESS,
+           "cad/components/magnetic_marker.py",
+           f"Ø{P.MARKER_DIAMETER_MM}×{P.MARKER_HEIGHT_MM}mm, {P.MARKER_COUNT} total (4 colors×2)"),
+    BomRow(5, "Ferrous Track Strip", 1, P.MARKER_TRACK_INSERT_SPEC, "Laser cut",
+           "cad/components/ferrous_strip.py",
+           f"{P.MARKER_TRACK_LENGTH_MM}×{P.MARKER_TRACK_WIDTH_MM}×{P.MARKER_TRACK_RECESS_DEPTH_MM}mm"),
+    # ── Sliding System ───────────────────────────────────────────────────────────
+    BomRow(6, "PTFE Slide Strip", P.PTFE_COUNT, P.PTFE_MATERIAL, "Die cut",
+           "cad/components/ptfe_slide_strip.py",
+           f"{P.PTFE_LENGTH_MM}×{P.PTFE_WIDTH_MM}×{P.PTFE_THICKNESS_MM}mm"),
+    # ── Hardware ────────────────────────────────────────────────────────────────
+    BomRow(7, "M3×8 SHCS", P.FASTENER_M3_SHCS_QTY, "SS A2-70", "Bought-in",
+           "", P.FASTENER_M3_SHCS_SPEC),
+    BomRow(8, "M5 Shoulder Bolt", P.FASTENER_M5_SHOULDER_QTY, "SS 316", "Bought-in",
+           "", P.FASTENER_M5_SHOULDER_SPEC),
+    BomRow(9, "Belleville Washer M5", P.FASTENER_BELLEVILLE_QTY, "Spring steel", "Bought-in",
+           "", P.FASTENER_BELLEVILLE_SPEC),
+    BomRow(10, "Silicone Foot Pad", P.FOOT_PAD_COUNT, P.FOOT_PAD_MATERIAL, "Bought-in",
+           "", f"Ø{P.FOOT_PAD_DIAMETER_MM}mm, adhesive-backed"),
 ]
 
 
@@ -78,10 +91,11 @@ def write_xlsx(path: Path) -> None:
         ws.append(headers)
         for row in BOM:
             ws.append([row.item_no, row.part_name, row.qty, row.material,
-                        row.process, row.source_file, row.notes])
+                       row.process, row.source_file, row.notes])
         # Column widths
         ws.column_dimensions["B"].width = 28
-        ws.column_dimensions["D"].width = 40
+        ws.column_dimensions["D"].width = 35
+        ws.column_dimensions["G"].width = 40
         wb.save(path)
         print(f"  ✅ XLSX → {path.relative_to(ROOT)}")
     except ImportError:

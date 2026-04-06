@@ -1,13 +1,13 @@
 # Repository Structure
 
-Annotated structure for `conical-filter-shaper`.
+Annotated structure for `universal-filter-ruler`.
 
 ---
 
 ## Top level
 
 ```text
-conical-filter-shaper/
+universal-filter-ruler/
 ├── CLAUDE.md
 ├── README.md
 ├── CHANGELOG.md
@@ -30,10 +30,22 @@ conical-filter-shaper/
 
 ```text
 cad/
-├── params.py
+├── params.py           ✅ All design parameters, tolerances, materials
+├── ruler_math.py      ✅ Geometric calculations for arm positions
 ├── components/
+│   ├── __init__.py
+│   ├── base_plate.py      ✅ T-slot base with magnetic track
+│   ├── sliding_arm.py     ✅ Adjustable arm with vernier scale
+│   ├── cam_lock.py        ✅ Eccentric cam lock mechanism
+│   ├── magnetic_marker.py ✅ N52 magnet in colored housing
+│   ├── ferrous_strip.py   ✅ Zinc-plated mild steel strip
+│   └── ptfe_slide_strip.py ✅ Low-friction PTFE liner
 ├── assemblies/
+│   ├── __init__.py
+│   ├── arm_assy.py        ✅ Sliding arm + cam lock + PTFE
+│   └── full_assy.py       ✅ Complete ruler assembly
 └── utils/
+    └── __init__.py
 ```
 
 ### Rules
@@ -46,10 +58,11 @@ cad/
 ## `tests/`
 
 Contains:
-- pure math checks
-- parameter consistency checks
-- geometry smoke tests
-- assembly validation tests
+- `test_params.py` — parameter consistency and validity checks
+- `test_ruler_math.py` — geometric calculation validation
+- `test_components.py` — component building tests
+- `test_assemblies.py` — assembly validation tests
+- `test_tolerances.py` — tolerance band verification
 
 Commit all of it.
 
@@ -58,36 +71,32 @@ Commit all of it.
 ## `scripts/`
 
 Utility scripts for:
-- export generation
-- geometry validation
-- BOM generation
-- revision bumping
-- future drawing/render automation
+- `build_exports.py` — Generate STEP, STL, SVG, DXF exports
+- `gen_bom.py` — Generate bill of materials CSV/XLSX
+- `validate_geometry.py` — Geometry validation checks
+- `bump_revision.py` — Revision management
 
-Scripts may exist as stubs before full geometry implementation lands.
+Scripts may exist as stubs before full implementation.
 
 ---
 
 ## `docs/`
 
 Human-facing design documentation:
-- design spec
-- manufacturability
-- FMEA
-- ADRs
-- Linux CAD toolchain notes
-- CadQuery implementation plan
-- repo structure
+- `design_spec.md` — Product specification (this replaces cone-specific spec)
+- `manufacturability.md` — Materials, sourcing, COGS
+- `repo_structure.md` — This file
+- `fmea.md` — Failure modes analysis
+- `adr/` — Architecture decision records
 
 ---
 
 ## `manufacturing/`
 
 Vendor handoff material:
-- committed CSV BOM
-- inspection docs
-- surface finish notes
-- generated drawings folder
+- `bom/bom_r1-0.csv` — Committed BOM
+- Inspection docs
+- Surface finish notes
 
 Only source docs and CSV should be committed.
 Generated PDFs/DXFs/XLSX stay gitignored.
@@ -97,12 +106,9 @@ Generated PDFs/DXFs/XLSX stay gitignored.
 ## `refs/`
 
 Reference material:
-- dripper dimensions
-- filter specs
-- competitor notes
-- standards
-
-Small text files are ideal. Large binaries should use Git LFS if needed.
+- Filter paper dimensions
+- Competitor product notes
+- Standards references
 
 ---
 
@@ -113,12 +119,11 @@ Never edit manually.
 Never treat as source-of-truth.
 
 Typical contents:
-- `exports/step/`
-- `exports/stl/`
-- `exports/svg/`
-- `exports/dxf/`
-- `renders/components/`
-- `renders/assembly/`
+- `exports/step/components/` — Component STEP files
+- `exports/step/assemblies/` — Assembly STEP files
+- `exports/stl/components/` — Component STL files
+- `exports/svg/components/` — SVG section views
+- `exports/dxf/components/` — DXF 2D profiles
 
 ---
 
@@ -128,29 +133,55 @@ Typical contents:
 - `snake_case.py`
 
 ### Export files
-- `{part_name}_r0-1.step`
-- `{assembly_name}_assy_r0-1.step`
+- `{part_name}_r1-0.step`
+- `{assembly_name}_r1-0.step`
 
 ### Parameters
-- `UPPER_SNAKE_CASE_MM`
-- `*_DEG`
-- `*_UM`
-- `*_N`
+- `UPPER_SNAKE_CASE_MM` — Lengths in mm
+- `*_DEG` — Angles in degrees
+- `*_N` — Forces in Newtons
 
 ---
 
 ## Commit policy
 
 ### Commit
-- CAD source
-- tests
-- scripts
-- markdown docs
-- CSV BOM
+- CAD source (`cad/`)
+- tests (`tests/`)
+- scripts (`scripts/`)
+- markdown docs (`docs/`)
+- CSV BOM (`manufacturing/bom/`)
 
 ### Do not commit
-- generated STEP/STL files
-- generated drawings
-- generated renders
-- temporary viewer/session files
-- local venv files
+- Generated STEP/STL files
+- Generated drawings
+- Generated renders
+- Local venv files
+- Python cache (`__pycache__/`, `*.pyc`)
+
+---
+
+## Key Parameters (params.py)
+
+```python
+# BasePlate
+BASE_LENGTH_MM = 200.0
+BASE_WIDTH_MM = 120.0
+BASE_THICKNESS_MM = 8.0
+
+# Sliding Arms
+ARM_LENGTH_MM = 150.0
+ARM_WIDTH_MM = 25.0
+ARM_THICKNESS_MM = 6.0
+
+# Angle Range
+ANGLE_MIN_DEG = 40.0
+ANGLE_MAX_DEG = 85.0
+
+# Magnetic Markers
+MARKER_COUNT = 8  #4 colors × 2 each
+```
+
+---
+
+*Last updated: 2026-04-06*

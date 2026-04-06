@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "conical-filter-shaper"
-version = "0.1.0"
-description = "CadQuery parametric CAD for the Universal Conical Coffee Filter Shaping Tool"
+name = "universal-filter-ruler"
+version = "1.0.0"
+description = "Universal Filter Ruler — adjustable angle ruler for coffee filter folding"
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "cadquery>=2.4,<3",

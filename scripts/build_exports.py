@@ -3,14 +3,14 @@
 Build all CAD exports: STEP, STL, SVG, DXF.
 
 Usage:
-    python scripts/build_exports.py [--preset P1|P2|P3|all] [--formats step stl svg dxf]
+    python scripts/build_exports.py [--angle 60] [--formats step stl svg dxf]
 
 Output:
     exports/step/components/{part}_r{rev}.step
-    exports/step/assemblies/{assy}_assy_r{rev}.step
+    exports/step/assemblies/{assy}_r{rev}.step
     exports/stl/components/{part}_r{rev}.stl
     exports/svg/components/{part}_section_r{rev}.svg
-    exports/dxf/components/{part}_r{rev}.dxf   (2D-profile parts only: overlap_fin for now)
+    exports/dxf/components/{part}_r{rev}.dxf   (2D-profile parts only)
 
 All outputs are gitignored — commit the source in cad/, not the exports.
 """
@@ -37,27 +37,24 @@ app = typer.Typer(help=__doc__)
 console = Console()
 
 
+# Universal Filter Ruler components
 COMPONENT_MODULES = [
-    "shell_half_l",
-    "shell_half_r",
-    "tip_insert_block",
-    "cam_ring",
-    "handle_housing",
-    "handle_grip_insert",
-    "overlap_fin",
-    "ejection_rod",
-    "base_cap",
+    "base_plate",
+    "sliding_arm",
+    "cam_lock",
+    "magnetic_marker",
+    "ferrous_strip",
+    "ptfe_slide_strip",
 ]
 
+# Universal Filter Ruler assemblies
 ASSEMBLY_MODULES = [
-    "mandrel_assy",
-    "ring_assy",
-    "ejection_assy",
+    "arm_assy",
     "full_assy",
 ]
 
-# Parts that also export a DXF 2D profile
-DXF_PARTS = {"overlap_fin"}
+# Parts that also export a DXF 2D profile (flat/2D parts)
+DXF_PARTS = {"ferrous_strip", "ptfe_slide_strip"}
 
 
 def export_dir(fmt: str, kind: str) -> Path:
@@ -72,7 +69,7 @@ def rev_slug() -> str:
 
 @app.command()
 def main(
-    preset: str = typer.Option("all", help="Preset to use for assemblies: P1/P2/P3/all"),
+    angle: float = typer.Option(60.0, help="Angle in degrees for full_assy (40-85)"),
     formats: list[str] = typer.Option(["step", "stl", "svg", "dxf"], help="Formats to export"),
 ):
     rev = rev_slug()
@@ -106,32 +103,27 @@ def main(
             console.print(f"  ❌ {mod_name} — {e}")
 
     # ── Assemblies ────────────────────────────────────────────────────────────
-    presets_to_export = P.PRESETS if preset == "all" else [
-        next(p for p in P.PRESETS if p.label == preset)
-    ]
-
     console.print("\n[cyan]Assemblies[/cyan]")
-    for mod_name in ASSEMBLY_MODULES:
-        mod = importlib.import_module(f"cad.assemblies.{mod_name}")
-        preset_iter = [None] if mod_name == "ejection_assy" else presets_to_export
-        for p in preset_iter:
-            label = p.label if p is not None else "base"
-            try:
-                assy = mod.build(preset=p) if p is not None else mod.build()
+    for mod_name in track(ASSEMBLY_MODULES, description="Exporting assemblies..."):
+        try:
+            mod = importlib.import_module(f"cad.assemblies.{mod_name}")
+            # arm_assy accepts side parameter, full_assy accepts angle_deg
+            if mod_name == "arm_assy":
+                assy = mod.build(side="left")  # Export left arm assembly
+            elif mod_name == "full_assy":
+                assy = mod.build(angle_deg=angle)
+            else:
+                assy = mod.build()
 
-                assy_slug = (
-                    f"{mod_name}_{label.lower()}_{rev}"
-                    if preset == "all" and p is not None
-                    else f"{mod_name}_{rev}"
-                )
-                if "step" in formats:
-                    out = export_dir("step", "assemblies") / f"{assy_slug}.step"
-                    cq.exporters.export(assy.toCompound(), str(out))
-                console.print(f"  ✅ {mod_name} ({label})")
-            except NotImplementedError:
-                console.print(f"  ⚠️  {mod_name} ({label}) — stub, skipped")
-            except Exception as e:
-                console.print(f"  ❌ {mod_name} ({label}) — {e}")
+            assy_slug = f"{mod_name}_{rev}"
+            if "step" in formats:
+                out = export_dir("step", "assemblies") / f"{assy_slug}.step"
+                cq.exporters.export(assy.toCompound(), str(out))
+            console.print(f"  ✅ {mod_name}")
+        except NotImplementedError:
+            console.print(f"  ⚠️  {mod_name} — stub, skipped")
+        except Exception as e:
+            console.print(f"  ❌ {mod_name} — {e}")
 
     console.rule("[green]Done[/green]")
 
