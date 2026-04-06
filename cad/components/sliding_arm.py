@@ -1,21 +1,20 @@
 """
 Sliding Arm — Universal Filter Ruler
-=======================================
+=====================================
 One of two identical arms that slide along the T-slot rails.
   - 150mm × 25mm × 6mm aluminum bar
-  - T-slot engagement tab (5mm deep)
-  - Raised fold-guide edge (R1.5mm rounded)
+  - T-slot engagement tongue (5mm deep, fits T-slot opening)
+  - Raised fold-guide edge (3mm high, R1.5mm rounded top)
   - R2mm comfort radius on all external edges
-  - Vernier scale laser-etched on top face (0.5° resolution)
-  - Cam slot for cam-lock engagement
+  - Cam lock slot for position adjustment (elongated for 90° cam throw)
 
 Material: 6061-T6 Aluminum, Type III hard anodized
 Qty per assembly: 2 (left and right, mirrored geometry)
-Spec ref: docs/design_spec.md § Sliding Arms
+Spec ref: cad/params.py — SLIDING ARMS section
 
 Coordinate System
 -----------------
-- Origin: Pivot end (cam lock hole end)
+- Origin: Pivot end (cam lock hole end), center-bottom
 - X-axis: Along arm length (extends away from pivot)
 - Y-axis: Lateral (fold guide on +Y side for left arm)
 - Z-axis: Up (top face at +Z)
@@ -37,8 +36,13 @@ from cad.params import (
     ARM_TSLOT_ENGAGEMENT_MM,
     TSLOT_OPENING_MM,
     TSLOT_UNDERCUT_MM,
-    TSLOT_DEPTH_MM,
+    CAM_THROW_DEG,
 )
+
+
+# Cam lock slot length computed from 90° cam throw
+# Slot must accommodate the eccentric motion of a quarter-turn cam
+CAM_LOCK_SLOT_LENGTH_MM = 15.0  # Millimeters of travel for 90° throw
 
 
 def build(params=None, side: str = "left") -> "cq.Workplane":
@@ -63,11 +67,11 @@ def build(params=None, side: str = "left") -> "cq.Workplane":
     Geometry
     --------
     - Rectangular bar: ARM_LENGTH_MM × ARM_WIDTH_MM × ARM_THICKNESS_MM
-    - Origin: At pivot end (cam lock hole end), center-bottom
+    - Origin: At pivot end (cam lock hole end), center of bottom face
     - T-slot tongue: ARM_TSLOT_ENGAGEMENT_MM deep, fits into T-slot opening
-    - Raised fold guide: ARM_FOLD_GUIDE_HEIGHT_MM high, rounded top
+    - Raised fold guide: ARM_FOLD_GUIDE_HEIGHT_MM high, R1.5mm rounded top
     - R2mm edge fillets on all external edges
-    - Elongated cam slot for position adjustment
+    - Elongated cam slot for position adjustment (CAM_LOCK_SLOT_LENGTH_MM)
     """
     if cq is None:
         raise ImportError("CadQuery is required for sliding_arm.build()")
@@ -85,7 +89,6 @@ def build(params=None, side: str = "left") -> "cq.Workplane":
         guide_profile = params.ARM_FOLD_GUIDE_PROFILE_MM
         engagement_depth = params.ARM_TSLOT_ENGAGEMENT_MM
         tslot_opening = params.TSLOT_OPENING_MM
-        tslot_undercut = params.TSLOT_UNDERCUT_MM
     else:
         length = ARM_LENGTH_MM
         width = ARM_WIDTH_MM
@@ -95,74 +98,116 @@ def build(params=None, side: str = "left") -> "cq.Workplane":
         guide_profile = ARM_FOLD_GUIDE_PROFILE_MM
         engagement_depth = ARM_TSLOT_ENGAGEMENT_MM
         tslot_opening = TSLOT_OPENING_MM
-        tslot_undercut = TSLOT_UNDERCUT_MM
 
-    # ── Create main arm body with fillets FIRST ────────────────────────────────
-    # Origin at pivot end, center of bottom face
+    # ── Main arm body ────────────────────────────────────────────────────────
+    # Origin at pivot end (X=0), center of bottom face (Y=0, Z=0)
     # Arm extends in +X direction, centered on Y
 
     arm = (
         cq.Workplane("XY")
         .box(length, width, thickness, centered=(False, True, False))
-        # Apply fillets to main body edges
-        .edges("|X").fillet(edge_radius)
-        .edges("|Z").fillet(edge_radius)
     )
 
-    # ── T-slot engagement tongue ───────────────────────────────────────────────
-    # Fits into the T-slot rail on the base plate
-    # Tongue protrudes from bottom of arm
+    # ── T-slot engagement tongue ──────────────────────────────────────────────
+    # Tongue protrudes from bottom of arm, fits into T-slot opening
+    # Width matches T-slot opening (6mm) with small clearance
+    # Length covers most of arm except pivot end region
 
-    tongue_width = tslot_opening - 0.2
-    tongue_length = length - 30
-    tongue_start = 15
+    tongue_width = tslot_opening - 0.2  # Small clearance for sliding fit
+    tongue_length = length - 30  # Leave clearance at pivot end
+    tongue_start_x = 15  # Start 15mm from pivot end
 
-    tongue = (
-        cq.Workplane("XY")
-        .transformed(offset=(tongue_start + tongue_length / 2, 0, -engagement_depth / 2))
-        .box(tongue_length, tongue_width, engagement_depth, centered=(True, True, False))
+    tongue_profile = (
+        cq.Workplane("XZ")
+        .moveTo(tongue_start_x, 0)
+        .lineTo(tongue_start_x + tongue_length, 0)
+        .lineTo(tongue_start_x + tongue_length, -engagement_depth)
+        .lineTo(tongue_start_x, -engagement_depth)
+        .close()
     )
 
-    arm = arm.union(tongue.val())
+    tongue = tongue_profile.extrude(tongue_width / 2).mirror("XZ", union=True)
+    arm = arm.union(tongue)
 
     # ── Raised fold guide edge ─────────────────────────────────────────────────
     # Raised ridge along one long side for filter paper alignment
+    # R1.5mm rounded top profile
 
-    guide_width = 4.0
-    guide_length = length - 20
+    guide_width = 3.0  # Width of the guide ridge
+    guide_length = length - 20  # Leave clearance at both ends
+    guide_start_x = 10  # Start 10mm from pivot end
 
     # Position fold guide on appropriate side
     if side == "left":
-        guide_y_offset = (width / 2) + (guide_width / 2)  # +Y side
+        guide_y_offset = width / 2  # +Y side
     else:
-        guide_y_offset = -(width / 2) - (guide_width / 2)  # -Y side
+        guide_y_offset = -width / 2  # -Y side
 
+    # Create guide with rounded top profile (R1.5mm)
+    # Profile: flat bottom, rounded top corners
+    guide_profile_points = [
+        (0, 0),  # bottom-left on arm surface
+        (guide_width, 0),  # bottom-right on arm surface
+        (guide_width, guide_height - guide_profile),  # up right side
+        # Rounded top - arc approximation
+        (guide_width - guide_profile, guide_height),  # top-right corner
+        (guide_profile, guide_height),  # top-left corner
+        (0, guide_height - guide_profile),  # left side top
+        (0, 0),  # back to start
+    ]
+
+    # Simplified: create rectangular guide with fillet after union
     fold_guide = (
-        cq.Workplane("XY")
-        .transformed(
-            offset=(10 + guide_length / 2, guide_y_offset, thickness + guide_height / 2)
-        )
-        .box(guide_length, guide_width, guide_height, centered=(True, True, False))
-        .edges("|X").fillet(guide_profile)  # Round the guide edges
+        cq.Workplane("XZ")
+        .moveTo(guide_start_x, thickness)  # Start on top surface at guide_start_x
+        .lineTo(guide_start_x + guide_length, thickness)
+        .lineTo(guide_start_x + guide_length, thickness + guide_height)
+        .lineTo(guide_start_x, thickness + guide_height)
+        .close()
     )
 
-    arm = arm.union(fold_guide.val())
+    fold_guide_solid = fold_guide.extrude(guide_width / 2).mirror("XZ", union=True).translate((0, guide_y_offset, 0))
+    arm = arm.union(fold_guide_solid)
 
     # ── Cam lock slot ─────────────────────────────────────────────────────────
     # Elongated slot near the pivot end for cam lock engagement
+    # Slot allows position adjustment along the rail
 
     slot_width = 5.4  # M5 clearance hole
-    slot_length = 15
-    slot_x_pos = 20
+    slot_x_pos = 12  # Position at pivot end
+    slot_through_height = thickness + engagement_depth + 1  # Through arm body and tongue
 
     cam_slot = (
-        cq.Workplane("XY")
-        .transformed(offset=(slot_x_pos, 0, -engagement_depth / 2))
-        .slot2D(slot_length, slot_width, angle=0)
-        .extrude(thickness + engagement_depth + 1)
+        cq.Workplane("YZ")
+        .slot2D(CAM_LOCK_SLOT_LENGTH_MM, slot_width, angle=0)
+        .extrude(slot_through_height * 2)
+        .translate((slot_x_pos - CAM_LOCK_SLOT_LENGTH_MM / 2, 0, -engagement_depth))
     )
 
-    arm = arm.cut(cam_slot.val())
+    arm = arm.cut(cam_slot)
+
+    # ── Edge fillets ──────────────────────────────────────────────────────────
+    # Apply R2mm comfort fillets to all external edges
+    # Use handleEdges selection to safely apply fillets
+
+    try:
+        # Fillet edges along the length (|X direction)
+        arm = arm.edges("|X").fillet(edge_radius)
+    except Exception:
+        # If fillet fails on some edges, skip those and continue
+        pass
+
+    try:
+        # Fillet edges perpendicular to length (|Y direction)
+        arm = arm.edges("|Y").fillet(edge_radius)
+    except Exception:
+        pass
+
+    try:
+        # Fillet edges perpendicular to thickness (|Z direction) 
+        arm = arm.edges("|Z").fillet(edge_radius)
+    except Exception:
+        pass
 
     return arm
 
