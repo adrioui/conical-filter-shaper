@@ -103,8 +103,8 @@ python scripts/render_all.py
 ```
 
 Current validated result after implementation follow-up:
-- **71 passed**
-- **3 xfailed** (intentional geometric-issue contracts)
+- **74 passed**
+- **0 xfailed**
 - **0 skipped**
 - `python scripts/validate_geometry.py` passes
 - `python scripts/build_exports.py` exports both components and assemblies successfully
@@ -141,6 +141,7 @@ What is implemented now after the follow-up sessions:
 - all files under `cad/components/` and `cad/assemblies/` now build
 - `scripts/build_exports.py` now exports assemblies correctly via `assy.toCompound()`
 - test coverage includes component tests, assembly smoke tests, pure-params assembly clearance checks, and CadQuery-backed geometric overlap checks
+- the previously documented geometric overlap contracts now pass with current nominal geometry
 
 ### Important behavioral rule
 The repo is no longer mostly stubs, but several solids remain **nominal V1 geometry**.
@@ -331,11 +332,11 @@ Only documentation exists for the recommended setup.
 Now that all current stubs are implemented, shift from scaffold build-out to **geometry quality and validation**.
 
 ### Recommended implementation order
-1. resolve the current geometric xfails (`grip_insert` ↔ housing, tip-block ↔ shell, rod ↔ tip-block)
-2. improve shell geometry fidelity and reduce hardcoded helper tuning numbers
-3. physically validate the updated tip-insert / ejection-stack behavior against paper handling
-4. reconcile `docs/manufacturability.md` with the actual current mechanism
-5. replace placeholder drawing/render scripts with real output generation
+1. improve shell geometry fidelity and reduce hardcoded helper tuning numbers
+2. physically validate the updated tip-insert / ejection-stack behavior against paper handling
+3. reconcile `docs/manufacturability.md` with the actual current mechanism
+4. replace placeholder drawing/render scripts with real output generation
+5. add motion- and tolerance-aware validation beyond the current nominal clearance checks
 
 Why this order:
 - the biggest remaining risks are correctness and manufacturability, not missing files

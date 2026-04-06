@@ -1,74 +1,88 @@
-# conical-filter-shaper
+# Universal Filter Ruler
 
-> CadQuery parametric CAD for the **Universal Conical Coffee Filter Shaping Tool**  
-> Three-preset angle-indexed mandrel: **48° / 60° / 80°** (full included angles)  
-> Revision **0.1** | Status: Pre-prototype — Phase 0 FDM validation pending
+> CadQuery parametric CAD for the **Universal Coffee Filter Ruler**  
+> Flat adjustable angle ruler: **40° – 85° continuous** | for folding paper coffee filters  
+> Revision **0.1** | Status: Pre-prototype — Stage 2 geometry implementation pending
 
 ---
 
 ## Overview
 
-A handheld barista tool that aims to shape coffee paper into a precision conical form in
-under 10 seconds. Three click-indexed angle presets cover the dominant conical dripper
-families (Timemore-style narrow, Hario V60 standard, UFO/Origami Wide experimentation).
-An adjustable seam-guide fin manages factory seam clocking / relief for pre-seamed cone
-papers; a spring-loaded ejection rod is planned to release the filter cleanly after insertion.
+The Universal Filter Ruler is a precision-engineered, flat adjustable tool for folding
+circular coffee filter papers into accurate cone shapes. Two sliding aluminum arms on a
+flat base plate spread symmetrically from a pivot point, covering every dripper angle
+from 40° to 85°. Arms lock instantly with eccentric cam mechanisms. Repositionable
+magnetic markers let users save up to 8 custom angle presets.
 
-All geometry is expressed as **CadQuery (Python)** source in `cad/`. Every dimension
-derives from `cad/params.py` — the single source of truth. Generated exports (STEP/STL)
-are reproducible by running one script and are never committed to git.
+Think: a **sliding T-bevel gauge** purpose-built for specialty coffee filter preparation.
 
-## V1 paper scope
+### What This Is NOT
+- ❌ Not a 3D cone mold, forming die, or mandrel
+- ❌ Not a hollow conical shell or rotary-indexed tool
+- ✅ A flat ruler with two pivoting arms
 
-- **Input paper:** standard **pre-seamed conical paper filters**
-- **Primary reference family:** common **02-class** cone papers
-- **Primary preset:** **60° / P2**
-- **Not V1 scope:** shaping raw flat circular paper discs into a new cone
+---
 
-The repo previously mixed in “185 mm circular disc” language. That is now considered
-legacy wording, not the intended V1 workflow.
+## Key Features
+
+| Feature | Spec |
+|---------|------|
+| Angle range | 40° – 85° continuous |
+| Scale resolution | 1° major divisions, 0.5° vernier |
+| Angle accuracy | ±0.1° scale, ±0.5° practical |
+| Base plate | 200mm × 120mm × 8mm, 6061-T6 Al |
+| Sliding arms | 150mm × 25mm × 6mm, 6061-T6 Al (×2) |
+| Locking | Eccentric cam lock, 90° throw, ≥50 N |
+| Magnetic presets | 8× Ø6mm N52 markers, 4 colors |
+| Surface treatment | Type III hard anodize, bead blasted |
+| Filter size guides | Laser-etched 01 / 02 / 03 circles |
+| Overlap scale | 0–20mm, 1mm divisions |
 
 ---
 
 ## Design Status
 
-| Preset | Angle | Half-angle | Target Dripper | Mandrel base Ø | CAD status |
-|--------|-------|-----------|----------------|---------------|-----------|
-| P1 | 48° | 24° | Timemore B75, Origami Narrow | 66.6 mm | ✅ Nominal geometry implemented |
-| P2 | 60° | 30° | Hario V60 #2, April Brewer | 82.0 mm | ✅ Nominal geometry implemented |
-| P3 | 80° | 40° | UFO Dripper, Origami Wide | 105.4 mm | ✅ Nominal geometry implemented |
+| Component | File | Status |
+|-----------|------|--------|
+| Base Plate | `cad/components/base_plate.py` | 🔲 Stub |
+| Sliding Arm | `cad/components/sliding_arm.py` | 🔲 Stub |
+| Cam Lock | `cad/components/cam_lock.py` | 🔲 Stub |
+| Magnetic Marker | `cad/components/magnetic_marker.py` | 🔲 Stub |
+| Ferrous Strip | `cad/components/ferrous_strip.py` | 🔲 Stub |
+| PTFE Slide Strip | `cad/components/ptfe_slide_strip.py` | 🔲 Stub |
+| Arm Assembly | `cad/assemblies/arm_assy.py` | 🔲 Stub |
+| Full Assembly | `cad/assemblies/full_assy.py` | 🔲 Stub |
 
-All current component and assembly entrypoints now build. The repo is still **pre-prototype**:
-geometry is intentionally simplified in several places, and some mechanisms are only modelled
-nominally for export/fit workflow rather than full manufacturing fidelity.
-
-Current honest gaps include:
-- tip-insert rod-tip / paper-contact behavior still needs physical validation
-- shell wall/thickness simplification and nominal seam features
-- nominal assembly placement still has known geometric overlap issues documented by xfail tests
-- drawing/render automation still scaffold-only
+All stubs raise `NotImplementedError` — geometry implemented in Stage 2.
 
 ---
 
 ## Repository Structure
 
 ```
-cad/             ← CadQuery source — ALWAYS commit
-  params.py      ← Single source for ALL dimensions and tolerances
-  components/    ← One file per physical part
-  assemblies/    ← Composed assemblies
-  utils/         ← Geometry helpers (no CQ imports — testable standalone)
-tests/           ← Geometry assertions — ALWAYS commit
-scripts/         ← Build / export / validate automation
-manufacturing/   ← Vendor handoff (drawings, BOM, inspection checklists)
-docs/            ← Design spec, assembly guide, FMEA, ADRs
-refs/            ← Dripper dimensions, filter specs, competitor analysis
-exports/         ← GITIGNORED (generated by scripts/build_exports.py)
-renders/         ← GITIGNORED (generated by scripts/render_all.py)
+cad/                   ← CadQuery source — ALWAYS commit
+  params.py            ← Single source for ALL dimensions and tolerances
+  components/          ← One file per physical part
+    base_plate.py      ← Flat base plate with T-slots + scale markings
+    sliding_arm.py     ← Adjustable arm (×2)
+    cam_lock.py        ← Eccentric cam lock (×2)
+    magnetic_marker.py ← Repositionable angle-preset marker (×8)
+    ferrous_strip.py   ← Steel track strip for magnets
+    ptfe_slide_strip.py← Optional PTFE T-slot liner
+  assemblies/
+    arm_assy.py        ← One arm + cam lock
+    full_assy.py       ← Base plate + both arm assemblies
+  utils/
+    ruler_math.py      ← Angle/arm geometry helpers (no CQ — testable standalone)
+    tolerances.py      ← ISO 286 fit helpers (no CQ)
+tests/                 ← Geometry assertions — ALWAYS commit
+scripts/               ← Build / export / validate automation
+manufacturing/         ← Vendor handoff (drawings, BOM, inspection checklists)
+docs/                  ← Design spec, FMEA, ADRs, toolchain notes
+refs/                  ← Dripper dimensions, filter specs, competitor analysis
+exports/               ← GITIGNORED (generated by scripts/build_exports.py)
+renders/               ← GITIGNORED (generated by scripts/render_all.py)
 ```
-
-See [`docs/repo_structure.md`](docs/repo_structure.md) for the annotated tree, naming
-conventions, commit policy, and agent workflow notes.
 
 ---
 
@@ -78,31 +92,25 @@ conventions, commit policy, and agent workflow notes.
 - `uv` recommended on Linux/Bluefin
 - FreeCAD optional for visual inspection
 
-See [`docs/toolchain_bluefin.md`](docs/toolchain_bluefin.md) for the recommended Linux setup.
+See [`docs/toolchain_bluefin.md`](docs/toolchain_bluefin.md) for Linux setup.
 
 ---
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/you/conical-filter-shaper
+git clone <repo-url>
 cd conical-filter-shaper
 uv python install 3.12
 uv venv --python 3.12 .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-# Run pure-math / scaffold-safe tests
+# Run tests (stubs auto-skip CQ-dependent tests)
 pytest tests/ -v
 
-# Validate geometry parameters and tolerance stacks
-python scripts/validate_geometry.py
-
-# Generate Bill of Materials
-python scripts/gen_bom.py
-
-# Build exports once component geometry exists
-python scripts/build_exports.py
+# Pure-math tests only (no CadQuery required)
+pytest -m "not cq" -v
 ```
 
 ---
@@ -112,100 +120,51 @@ python scripts/build_exports.py
 **All dimensions live in `cad/params.py`.** Edit there, then:
 
 ```bash
-pytest tests/ -v                      # catch regressions
-python scripts/validate_geometry.py  # tolerance stack + clearance checks
-python scripts/build_exports.py      # regenerate STEP/STL/SVG/DXF when solids exist
-python scripts/bump_revision.py 0.2 "What changed"  # bump revision + CHANGELOG
+pytest tests/ -v
+python scripts/validate_geometry.py
+python scripts/build_exports.py       # when geometry is implemented
+python scripts/bump_revision.py 0.2 "What changed"
 ```
 
 Never hardcode numbers in component files.
 
 ---
 
-## Planned utilities
+## Bill of Materials (Summary)
 
-These script entrypoints exist but are currently placeholders until real geometry lands:
+| # | Part | Qty | Material | Est. Cost (IDR) |
+|---|------|-----|----------|----------------|
+| 1 | Base Plate | 1 | 6061-T6 Al | 95,000 |
+| 2 | Sliding Arm | 2 | 6061-T6 Al | 50,000 |
+| 3 | Cam Lock Assembly | 2 | SS 316 + Al | 24,000 |
+| 4 | Magnetic Marker | 8 | Al + N52 magnet | 16,000 |
+| 5 | Ferrous Track Strip | 1 | Mild steel | 4,000 |
+| 6 | PTFE Slide Strip | 2 | PTFE | 4,000 |
+| 7 | Hardware (M3/M5) | — | SS A2-70 | 10,000 |
+| | **Parts Total** | | | **~205,000** |
 
-- `python scripts/gen_drawings.py`
-- `python scripts/render_all.py`
-
----
-
-## Parts & Components
-
-| # | Part | File | Material |
-|---|------|------|----------|
-| 1 | Half-Shell L | `cad/components/shell_half_l.py` | POM-C (Acetal Copolymer) |
-| 2 | Half-Shell R | `cad/components/shell_half_r.py` | POM-C |
-| 3 | Tip Insert Block | `cad/components/tip_insert_block.py` | SS 316L |
-| 4 | Angle-Set Ring | `cad/components/cam_ring.py` | 6061-T6 Al, Type II anodized |
-| 5 | Handle Housing | `cad/components/handle_housing.py` | 6061-T6 Al, Type II anodized |
-| 6 | Seam Guide Fin | `cad/components/overlap_fin.py` | SS 301 half-hard (laser-cut) |
-| 7 | Ejection Rod | `cad/components/ejection_rod.py` | SS 304, h6 ground |
-| 8 | Base Cap | `cad/components/base_cap.py` | 6061-T6 Al |
-| 9 | Handle Grip Insert | `cad/components/handle_grip_insert.py` | NBR-70 / TPU Shore-A70 |
-
-Full BOM with hardware: run `python scripts/gen_bom.py` → `manufacturing/bom/bom_r0-1.csv`
-
----
-
-## Running Tests
-
-```bash
-pytest tests/ -v                        # all tests
-pytest tests/test_cone_angles.py -v    # angle accuracy only
-pytest tests/test_params.py -v         # parameter self-consistency
-pytest tests/test_cam_geometry.py -v   # cam track math
-pytest -m "not cq" -v                  # skip CadQuery-dependent tests
-```
-
----
-
-## Manufacturing Handoff
-
-See [`manufacturing/README.md`](manufacturing/README.md) for RFQ packaging instructions.
-
-- Critical dimensions: [`manufacturing/inspection/critical_dims_v0-1.md`](manufacturing/inspection/critical_dims_v0-1.md)
-- Surface finish + anodize masking: [`manufacturing/surface_finish_notes.md`](manufacturing/surface_finish_notes.md)
-- Indonesia sourcing: [`docs/manufacturability.md`](docs/manufacturability.md) → §8
-
----
-
-## Design Decisions (ADRs)
-
-| ADR | Decision |
-|-----|---------|
-| [ADR-001](docs/adr/adr-001-cadquery-as-source.md) | CadQuery as source of truth |
-| [ADR-002](docs/adr/adr-002-pom-c-for-shells.md) | POM-C for shell halves |
-| [ADR-003](docs/adr/adr-003-ball-detent-over-snap.md) | Ball detent over snap tab |
-| [ADR-004](docs/adr/adr-004-exports-gitignored.md) | Exports gitignored, regenerated from source |
+Full BOM: run `python scripts/gen_bom.py` → `manufacturing/bom/bom_r0-1.csv`
 
 ---
 
 ## Roadmap
 
-- [ ] Phase 0: FDM print (PETG, 0.15 mm layer) → ergonomic + angle validation
-- [x] Implement `cam_ring.build()`
-- [x] Implement `tip_insert_block.build()`
-- [x] Implement `overlap_fin.build()` / seam-guide fin profile
-- [x] Implement `shell_half_l/r.build()`
-- [x] Implement remaining nominal components (`handle_housing`, `handle_grip_insert`, `ejection_rod`, `base_cap`)
-- [x] Implement nominal assemblies (`ejection_assy`, `ring_assy`, `mandrel_assy`, `full_assy`)
-- [ ] Full assembly interpenetration / clearance tests
-- [ ] Phase 1: CNC alpha (1–3 units, SS 316L + POM-C + 6061-T6)
-- [ ] Phase 1 validation tests (spec §8.2)
-- [ ] V2 flags: multi-paper-size support, enclosed wipe-clean cam, bronze bushing
+- [x] Stage 1: Repo restructure (delete cone files, create stubs, update docs)
+- [ ] Stage 2: `cad/params.py` rewrite for ruler dimensions
+- [ ] Stage 3: `base_plate.build()` + `sliding_arm.build()` geometry
+- [ ] Stage 4: `cam_lock.build()` + `arm_assy.build()`
+- [ ] Stage 5: `full_assy.build()` + DXF/STEP export pipeline
+- [ ] Phase 0: FDM prototype validation (3D print for ergonomics + angle accuracy)
+- [ ] Phase 1: CNC alpha (6061-T6 Al, 1–3 units)
+- [ ] Production: Hard anodize + laser etch + packaging
 
 ---
 
 ## References
 
-- Full design spec: [`docs/design_spec.md`](docs/design_spec.md)
-- Manufacturability & materials: [`docs/manufacturability.md`](docs/manufacturability.md)
-- Failure mode analysis: [`docs/fmea.md`](docs/fmea.md)
-- Linux toolchain notes: [`docs/toolchain_bluefin.md`](docs/toolchain_bluefin.md)
-- CadQuery implementation plan: [`docs/cadquery_modeling_plan.md`](docs/cadquery_modeling_plan.md)
-- Repo structure: [`docs/repo_structure.md`](docs/repo_structure.md)
+- Design spec: [`docs/design_spec.md`](docs/design_spec.md)
+- Manufacturability: [`docs/manufacturability.md`](docs/manufacturability.md)
+- Toolchain: [`docs/toolchain_bluefin.md`](docs/toolchain_bluefin.md)
 - Competitor analysis: [`refs/competitor_analysis/filter-shaping-tool-brief.md`](refs/competitor_analysis/filter-shaping-tool-brief.md)
 
 ---

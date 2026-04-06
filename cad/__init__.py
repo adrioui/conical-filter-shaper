@@ -1,1 +1,1 @@
-# cad package — Universal Conical Filter Shaping Tool
+# cad package — Universal Filter Ruler

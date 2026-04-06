@@ -1,17 +1,17 @@
 """
-Component build tests.
+Component build tests — Universal Filter Ruler.
 
-These are scaffold-aware:
-- if CadQuery is missing, they are skipped
-- if a component is still intentionally stubbed, they are skipped
-- once geometry exists, the same tests become smoke tests automatically
+Scaffold-aware:
+- If CadQuery is missing, all tests are skipped.
+- If a component raises NotImplementedError (stub), the test is skipped.
+- Once geometry is implemented, the same tests become smoke tests automatically.
 """
-import math
 import pytest
 from tests.conftest import requires_cq
 
 
 def build_or_skip(builder, *args, **kwargs):
+    """Run builder or skip if NotImplementedError is raised."""
     try:
         return builder(*args, **kwargs)
     except NotImplementedError as exc:
@@ -22,152 +22,189 @@ def build_or_skip(builder, *args, **kwargs):
 class TestComponentBuilds:
     """Smoke tests: implemented components must build without error."""
 
-    @pytest.mark.parametrize("preset", [None], ids=["default_preset"])
-    def test_shell_half_l_builds(self, params, preset):
-        from cad.components.shell_half_l import build
-        result = build_or_skip(build, params=params, preset=preset)
-        assert result is not None
+    def test_base_plate_builds(self, params):
+        """Test that base_plate.build() returns a valid Workplane."""
+        from cad.components.base_plate import build
+        result = build_or_skip(build, params=params)
+        assert result is not None, "build() returned None"
 
-    @pytest.mark.parametrize("preset", [None], ids=["default_preset"])
-    def test_shell_half_r_builds(self, params, preset):
-        from cad.components.shell_half_r import build
-        result = build_or_skip(build, params=params, preset=preset)
-        assert result is not None
+    def test_sliding_arm_builds(self, params):
+        """Test that sliding_arm.build() returns a valid Workplane."""
+        from cad.components.sliding_arm import build
+        result = build_or_skip(build, params=params, side="left")
+        assert result is not None, "build() returned None"
 
-    def test_tip_insert_block_builds(self, params):
-        from cad.components.tip_insert_block import build
+    def test_sliding_arm_right_side(self, params):
+        """Test sliding_arm.build() with right side."""
+        from cad.components.sliding_arm import build
+        result = build_or_skip(build, params=params, side="right")
+        assert result is not None, "build() returned None for right side"
+
+    def test_cam_lock_builds(self, params):
+        from cad.components.cam_lock import build
         result = build_or_skip(build, params=params)
         assert result is not None
 
-    def test_cam_ring_builds(self, params):
-        from cad.components.cam_ring import build
+    def test_magnetic_marker_builds(self, params):
+        from cad.components.magnetic_marker import build
         result = build_or_skip(build, params=params)
         assert result is not None
 
-    def test_handle_housing_builds(self, params):
-        from cad.components.handle_housing import build
+    def test_ferrous_strip_builds(self, params):
+        from cad.components.ferrous_strip import build
         result = build_or_skip(build, params=params)
         assert result is not None
 
-    def test_handle_grip_insert_builds(self, params):
-        from cad.components.handle_grip_insert import build
-        result = build_or_skip(build, params=params)
-        assert result is not None
-
-    def test_overlap_fin_builds(self, params):
-        from cad.components.overlap_fin import build
-        result = build_or_skip(build, params=params)
-        assert result is not None
-
-    def test_ejection_rod_builds(self, params):
-        from cad.components.ejection_rod import build
-        result = build_or_skip(build, params=params)
-        assert result is not None
-
-    def test_base_cap_builds(self, params):
-        from cad.components.base_cap import build
+    def test_ptfe_slide_strip_builds(self, params):
+        from cad.components.ptfe_slide_strip import build
         result = build_or_skip(build, params=params)
         assert result is not None
 
 
 @requires_cq
-class TestComponentBoundingBoxes:
-    """Bounding box sanity checks on implemented components."""
+class TestBasePlateDimensions:
+    """Bounding box and origin verification tests for base_plate."""
 
-    def test_tip_insert_block_bounding_box(self, params):
-        from cad.components.tip_insert_block import build
-        block = build_or_skip(build, params=params)
-        bb = block.val().BoundingBox()
-        assert abs(bb.xlen - params.TIP_BLOCK_WIDTH_MM) < 0.1
-        assert abs(bb.ylen - params.TIP_BLOCK_DEPTH_MM) < 0.1
-        assert abs(bb.zlen - params.TIP_BLOCK_HEIGHT_MM) < 0.1
-        assert abs(bb.zmin) < 0.1
+    def test_base_plate_bounding_box(self, params):
+        """Verify base plate dimensions are within ±0.1mm of spec."""
+        from cad.components.base_plate import build
+        result = build_or_skip(build, params=params)
+        if result is None:
+            pytest.skip("build() returned None")
 
-    def test_tip_insert_block_volume_reduced_from_plain_box(self, params):
-        from cad.components.tip_insert_block import build
-        block = build_or_skip(build, params=params)
-        volume = block.val().Volume()
-        plain_box = params.TIP_BLOCK_WIDTH_MM * params.TIP_BLOCK_DEPTH_MM * params.TIP_BLOCK_HEIGHT_MM
-        assert volume < plain_box * 0.99, "dimple + bores should reduce tip-block volume"
-        assert volume > plain_box * 0.90, "tip-block cuts should not over-remove material"
+        # Get bounding box
+        bb = result.val().BoundingBox()
 
-    def test_overlap_fin_bounding_box(self, params):
-        from cad.components.overlap_fin import build
-        fin = build_or_skip(build, params=params)
-        bb = fin.val().BoundingBox()
-        assert abs(bb.zlen - params.FIN_LENGTH_MM) < 0.1
-        assert abs(bb.ylen - params.FIN_WIDTH_MM) < 0.1
-        assert abs(bb.xlen - params.FIN_THICKNESS_MM) < 0.1
+        # Expected dimensions from params
+        expected_length = params.BASE_LENGTH_MM if params else 200.0
+        expected_width = params.BASE_WIDTH_MM if params else 120.0
+        expected_thickness = params.BASE_THICKNESS_MM if params else 8.0
 
-    def test_ejection_rod_bounding_box(self, params):
-        from cad.components.ejection_rod import build
-        rod = build_or_skip(build, params=params)
-        bb = rod.val().BoundingBox()
-        assert abs(bb.zlen - params.EJECTION_ROD_LENGTH_MM) < 0.5
-        assert abs(bb.xlen - params.EJECTION_ROD_DIAMETER_MM) < 0.5
-        assert abs(bb.ylen - params.EJECTION_ROD_DIAMETER_MM) < 0.5
+        # Tolerance
+        tol = 0.1
 
-    def test_base_cap_bounding_box(self, params):
-        from cad.components.base_cap import build
-        cap = build_or_skip(build, params=params)
-        bb = cap.val().BoundingBox()
-        assert abs(bb.xlen - params.BASE_CAP_OD_MM) < 0.5
-        assert abs(bb.zlen - params.BASE_CAP_THICKNESS_MM) < 1.0
+        # Check dimensions (bounding box is from min to max, spans full dimension)
+        actual_length = bb.xmax - bb.xmin
+        actual_width = bb.ymax - bb.ymin
+        actual_thickness = bb.zmax - bb.zmin
 
-    def test_handle_housing_bounding_box(self, params):
-        from cad.components.handle_housing import build
-        housing = build_or_skip(build, params=params)
-        bb = housing.val().BoundingBox()
-        total = params.HOUSING_FLANGE_HEIGHT_MM + params.HANDLE_LENGTH_MM
-        assert abs(bb.xlen - params.HOUSING_FLANGE_OD_MM) < 1.0
-        assert abs(bb.ylen - params.HOUSING_FLANGE_OD_MM) < 1.0
-        assert abs(bb.zlen - total) < 1.0
-        assert abs(bb.zmax) < 0.1
+        assert abs(actual_length - expected_length) < tol, (
+            f"Length {actual_length:.3f} differs from expected {expected_length} by more than {tol}mm"
+        )
+        assert abs(actual_width - expected_width) < tol, (
+            f"Width {actual_width:.3f} differs from expected {expected_width} by more than {tol}mm"
+        )
+        assert abs(actual_thickness - expected_thickness) < tol, (
+            f"Thickness {actual_thickness:.3f} differs from expected {expected_thickness} by more than {tol}mm"
+        )
 
-    @pytest.mark.parametrize("preset_name", ["PRESET_1", "PRESET_2", "PRESET_3"])
-    def test_shell_half_l_builds_all_presets(self, params, preset_name):
-        from cad.components.shell_half_l import build
-        preset = getattr(params, preset_name)
-        result = build_or_skip(build, params=params, preset=preset)
-        assert result is not None
+    def test_base_plate_origin(self, params):
+        """Verify base plate origin is at center of bottom face."""
+        from cad.components.base_plate import build
+        result = build_or_skip(build, params=params)
+        if result is None:
+            pytest.skip("build() returned None")
 
-    def test_shell_half_l_bounding_box_p2(self, params):
-        from cad.components.shell_half_l import build
-        shell = build_or_skip(build, params=params, preset=params.PRESET_2)
-        bb = shell.val().BoundingBox()
-        assert bb.zlen > (params.PRESET_2.axial_height_mm * 0.8)
-        assert bb.zmax > params.PRESET_2.axial_height_mm
-        assert bb.xlen > (params.SHELL_FOLLOWER_BOSS_OD_MM / 2.0)
+        # Get bounding box
+        bb = result.val().BoundingBox()
 
-    def test_cam_ring_od(self, params):
-        from cad.components.cam_ring import build
-        ring = build_or_skip(build, params=params)
-        bb = ring.val().BoundingBox()
-        ring_od = params.CAM_RING_OD_MM
-        assert abs(bb.xmax - bb.xmin - ring_od) < 0.5
-        assert abs(bb.ymax - bb.ymin - ring_od) < 0.5
+        # Origin should be at center-bottom: (0, 0, 0)
+        # For plate with origin at center-bottom:
+        # - X center is (xmin + xmax) / 2 = 0
+        # - Y center is (ymin + ymax) / 2 = 0
+        # - Z min should be 0 (bottom face at origin)
 
-    def test_cam_ring_thickness(self, params):
-        from cad.components.cam_ring import build
-        ring = build_or_skip(build, params=params)
-        bb = ring.val().BoundingBox()
-        thickness = params.CAM_RING_THICKNESS_MM
-        assert abs(bb.zmax - bb.zmin - thickness) < 1.0
+        expected_thickness = params.BASE_THICKNESS_MM if params else 8.0
+        tol = 0.1
 
-    def test_cam_ring_volume_reduced_from_plain_annulus(self, params):
-        from cad.components.cam_ring import build
-        ring = build_or_skip(build, params=params)
-        volume = ring.val().Volume()
-        plain_annulus = math.pi * (
-            (params.CAM_RING_OD_MM / 2.0) ** 2 - (params.CAM_RING_BORE_MM / 2.0) ** 2
-        ) * params.CAM_RING_THICKNESS_MM
-        assert volume < plain_annulus * 0.99, "cam track + detent cuts should reduce volume"
+        # Check that X-center is at origin
+        x_center = (bb.xmin + bb.xmax) / 2
+        assert abs(x_center) < tol, f"X center {x_center:.3f} should be at origin (0)"
 
-    def test_cam_ring_volume_still_reasonable(self, params):
-        from cad.components.cam_ring import build
-        ring = build_or_skip(build, params=params)
-        volume = ring.val().Volume()
-        plain_annulus = math.pi * (
-            (params.CAM_RING_OD_MM / 2.0) ** 2 - (params.CAM_RING_BORE_MM / 2.0) ** 2
-        ) * params.CAM_RING_THICKNESS_MM
-        assert volume > plain_annulus * 0.85, "cam-ring cuts should not over-remove material"
+        # Check that Y-center is at origin
+        y_center = (bb.ymin + bb.ymax) / 2
+        assert abs(y_center) < tol, f"Y center {y_center:.3f} should be at origin (0)"
+
+        # Check that bottom face is at Z=0
+        assert abs(bb.zmin) < tol, f"Bottom face Z={bb.zmin:.3f} should be at origin (0)"
+
+        # Check that top face is at Z=thickness
+        assert abs(bb.zmax - expected_thickness) < tol, (
+            f"Top face Z={bb.zmax:.3f} should be at thickness ({expected_thickness}mm)"
+        )
+
+
+@requires_cq
+class TestSlidingArmDimensions:
+    """Bounding box and origin verification tests for sliding_arm."""
+
+    def test_sliding_arm_bounding_box(self, params):
+        """Verify sliding arm dimensions are within ±0.1mm of spec."""
+        from cad.components.sliding_arm import build
+        result = build_or_skip(build, params=params, side="left")
+        if result is None:
+            pytest.skip("build() returned None")
+
+        # Get bounding box
+        bb = result.val().BoundingBox()
+
+        # Expected dimensions from params
+        expected_length = params.ARM_LENGTH_MM if params else 150.0
+        expected_width = params.ARM_WIDTH_MM if params else 25.0
+        expected_thickness = params.ARM_THICKNESS_MM if params else 6.0
+
+        # Tolerance
+        tol = 0.3  # Allow for tongue and fold guide protrusions
+
+        # Check dimensions
+        actual_length = bb.xmax - bb.xmin
+        actual_width = bb.ymax - bb.ymin
+        actual_thickness = bb.zmax - bb.zmin
+
+        # Length check (should match spec)
+        assert abs(actual_length - expected_length) < tol, (
+            f"Length {actual_length:.3f} differs from expected {expected_length} by more than {tol}mm"
+        )
+
+        # Width check (may vary due to T-slot tongue)
+        assert abs(actual_width - expected_width) < tol * 2, (
+            f"Width {actual_width:.3f} may include tongue width"
+        )
+
+        # Thickness check (may include fold guide)
+        assert actual_thickness >= expected_thickness, (
+            f"Thickness {actual_thickness:.3f} should be at least {expected_thickness}mm"
+        )
+
+    def test_sliding_arm_origin_at_pivot_end(self, params):
+        """Verify sliding arm origin is at the pivot end (cam lock hole end)."""
+        from cad.components.sliding_arm import build
+        result = build_or_skip(build, params=params, side="left")
+        if result is None:
+            pytest.skip("build() returned None")
+
+        # Get bounding box
+        bb = result.val().BoundingBox()
+
+        # Origin should be at pivot end center-bottom
+        # X should start at 0 (or very close)
+        tol = 1.0  # Allow some tolerance for cam slot positioning
+
+        assert bb.xmin < tol, f"Arm starts at X={bb.xmin:.3f}, should be at pivot end"
+
+    def test_sliding_arm_both_sides_build(self, params):
+        """Test that both left and right arms build successfully."""
+        from cad.components.sliding_arm import build
+
+        left_result = build_or_skip(build, params=params, side="left")
+        right_result = build_or_skip(build, params=params, side="right")
+
+        assert left_result is not None, "Left arm build returned None"
+        assert right_result is not None, "Right arm build returned None"
+
+    def test_sliding_arm_invalid_side_raises(self, params):
+        """Test that invalid side parameter raises ValueError."""
+        from cad.components.sliding_arm import build
+
+        with pytest.raises(ValueError, match="side must be 'left' or 'right'"):
+            build(params=params, side="invalid")

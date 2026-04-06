@@ -1,139 +1,425 @@
 """
-Unit tests for cad/params.py — verify internal consistency of design parameters.
-No CadQuery required.
+Unit tests for cad/params.py — Universal Filter Ruler parameter module.
+
+Verifies:
+  - RulerPreset dataclass fields and values
+  - Angle system range (40°–85°) and resolution constants
+  - All critical dimensions against vault specifications
+  - Material and process strings are non-empty and match spec keywords
+  - Hardware and tolerance constants are present and sensible
+
+No CadQuery required — pure data validation.
 """
-import math
 import pytest
 import cad.params as P
-from cad.utils.cone_math import base_radius, axial_height
+from cad.params import RulerPreset
 
 
-class TestConePresetSelfConsistency:
-    """Verify that tabulated values in each ConePreset match their formulas."""
+# ═══════════════════════════════════════════════════════════════════════════════
+# Module import / revision
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    @pytest.mark.parametrize("preset", P.PRESETS)
-    def test_base_radius_formula(self, preset):
-        """base_radius_mm ≈ slant_height × sin(half_angle)"""
-        expected = base_radius(preset.slant_height_mm, preset.half_angle_deg)
-        assert abs(preset.base_radius_mm - expected) < 0.15, (
-            f"{preset.label}: tabulated base_radius={preset.base_radius_mm}, "
-            f"formula gives {expected:.2f}"
-        )
+class TestModuleLoads:
+    def test_importable(self):
+        import cad.params  # noqa: F401
 
-    @pytest.mark.parametrize("preset", P.PRESETS)
-    def test_axial_height_formula(self, preset):
-        """axial_height_mm ≈ slant_height × cos(half_angle)"""
-        expected = axial_height(preset.slant_height_mm, preset.half_angle_deg)
-        assert abs(preset.axial_height_mm - expected) < 0.15, (
-            f"{preset.label}: tabulated axial_height={preset.axial_height_mm}, "
-            f"formula gives {expected:.2f}"
-        )
-
-    @pytest.mark.parametrize("preset", P.PRESETS)
-    def test_half_angle_is_half_of_included(self, preset):
-        assert abs(preset.half_angle_deg - preset.included_angle_deg / 2.0) < 1e-6
-
-    @pytest.mark.parametrize("preset", P.PRESETS)
-    def test_cam_dwell_radius_matches_base_radius(self, preset):
-        """Cam dwell radius must equal shell base radius for angle accuracy."""
-        assert abs(preset.cam_dwell_radius_mm - preset.base_radius_mm) < 0.01, (
-            f"{preset.label}: cam_dwell_radius={preset.cam_dwell_radius_mm} "
-            f"≠ base_radius={preset.base_radius_mm}"
-        )
+    def test_revision_is_string(self):
+        assert isinstance(P.REVISION, str)
+        assert len(P.REVISION) > 0
 
 
-class TestCamRingGeometry:
-    """Verify cam ring envelope can accommodate all presets."""
+# ═══════════════════════════════════════════════════════════════════════════════
+# RulerPreset dataclass
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    def test_cam_track_radial_reach_within_ring_od(self):
-        """
-        Shell base pins ride in the cam track on the ring's TOP FACE, not through the bore.
-        Verify the max dwell radius fits within the ring face with adequate wall thickness.
-        """
-        max_dwell_r = max(p.cam_dwell_radius_mm for p in P.PRESETS)
-        track_wall_mm = 4.0  # 4.0 mm absolute min; P3 design actual = 4.8 mm (acceptable)
-        max_allowed_r = (P.CAM_RING_OD_MM / 2.0) - (P.CAM_TRACK_WIDTH_MM / 2.0) - track_wall_mm
-        assert max_dwell_r <= max_allowed_r, (
-            f"Max dwell radius {max_dwell_r} mm exceeds allowed {max_allowed_r:.1f} mm "
-            f"(ring OD/2 - track_width/2 - {track_wall_mm} mm wall)"
-        )
+class TestRulerPresetDataclass:
+    """RulerPreset is a frozen dataclass with the correct fields."""
 
-    def test_cam_dwell_plus_transition_closes_180_per_follower(self):
-        """
-        Per-follower arc sum must be 180°.
-        The ring has 2 followers offset 180° apart; together they fill 360°.
-        Each follower's track: 3 presets × (dwell + transition) = 3 × 60° = 180°.
-        """
-        n = len(P.PRESETS)
-        total = n * (P.CAM_DWELL_ARC_DEG + P.CAM_TRANSITION_ARC_DEG)
-        assert abs(total - 180.0) < 0.01, (
-            f"Per-follower cam arc total = {total}°, expected 180° "
-            "(2 followers × 180° = 360° full ring)"
-        )
+    def test_is_dataclass(self):
+        import dataclasses
+        assert dataclasses.is_dataclass(RulerPreset)
 
+    def test_is_frozen(self):
+        """RulerPreset instances must be immutable."""
+        preset = P.STANDARD_PRESET
+        with pytest.raises((AttributeError, TypeError)):
+            preset.name = "Modified"  # type: ignore[misc]
 
-class TestDetentGeometry:
-    """Verify detent dimple proportions."""
+    def test_standard_preset_name(self):
+        assert P.STANDARD_PRESET.name == "Standard"
 
-    def test_dimple_depth_is_35pct_ball_diameter(self):
-        """
-        Dimple depth target: ~35% of ball diameter.
-        Convention here is depth/diameter. Acceptable range: 28–45% of diameter.
-        """
-        ball_d = P.DETENT_BALL_DIAMETER_MM
-        ratio = P.DETENT_DIMPLE_DEPTH_MM / ball_d
-        assert 0.28 <= ratio <= 0.45, (
-            f"Detent dimple depth/diameter = {ratio:.2%}; "
-            "outside 28–45% of ball diameter (too shallow = no click, too deep = won't release)"
-        )
+    def test_travel_preset_name(self):
+        assert P.TRAVEL_PRESET.name == "Travel"
 
-    def test_dimple_radius_greater_than_ball_radius(self):
-        ball_r = P.DETENT_BALL_DIAMETER_MM / 2.0
-        assert P.DETENT_DIMPLE_RADIUS_MM > ball_r, (
-            "Dimple pocket radius must exceed ball radius for clean ball seating"
-        )
+    def test_standard_preset_dimensions(self):
+        p = P.STANDARD_PRESET
+        assert p.base_length_mm == 200.0
+        assert p.base_width_mm == 120.0
+        assert p.base_thickness_mm == 8.0
 
+    def test_travel_preset_dimensions(self):
+        p = P.TRAVEL_PRESET
+        assert p.base_length_mm == 150.0
+        assert p.base_width_mm == 90.0
+        assert p.base_thickness_mm == 8.0   # Same thickness as Standard
 
-class TestToolEnvelope:
-    """Verify overall tool dimensions are within ergonomic bounds."""
+    def test_standard_weight(self):
+        assert P.STANDARD_PRESET.weight_g == pytest.approx(350.0)
 
-    def test_handle_diameter_ergonomic(self):
-        assert 35.0 <= P.HANDLE_OD_MM <= 50.0, (
-            f"Handle OD {P.HANDLE_OD_MM} mm outside ergonomic range 35–50 mm"
-        )
+    def test_travel_weight(self):
+        assert P.TRAVEL_PRESET.weight_g == pytest.approx(250.0)
 
-    def test_tool_height_reasonable(self):
-        assert 140.0 <= P.TOOL_HEIGHT_AT_80DEG_MM <= 200.0, (
-            f"Tool height {P.TOOL_HEIGHT_AT_80DEG_MM} mm outside expected 140–200 mm"
-        )
+    def test_folded_height_both_presets(self):
+        assert P.STANDARD_PRESET.folded_height_mm == pytest.approx(15.0)
+        assert P.TRAVEL_PRESET.folded_height_mm == pytest.approx(15.0)
 
-    def test_max_width_at_widest_preset(self):
-        assert abs(P.TOOL_MAX_WIDTH_MM - P.PRESET_3.base_radius_mm * 2) < 0.1
+    def test_ruler_presets_list_contains_both(self):
+        names = {p.name for p in P.RULER_PRESETS}
+        assert "Standard" in names
+        assert "Travel" in names
+
+    def test_default_ruler_preset_is_standard(self):
+        assert P.DEFAULT_RULER_PRESET.name == "Standard"
 
 
-class TestTipInsertBlock:
-    """Verify tip-block parameter relationships remain internally coherent."""
+# ═══════════════════════════════════════════════════════════════════════════════
+# Base plate dimensions  (vault: Design Specifications § Base Plate)
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    def test_blind_ejection_chamber_clears_hinge_bore(self):
-        chamber_bottom_z = P.TIP_BLOCK_HEIGHT_MM - P.TIP_EJECTION_CHAMBER_DEPTH_MM
-        hinge_top_z = P.TIP_HINGE_BORE_Z_MM + (P.TIP_HINGE_BORE_DIA_MM / 2.0)
-        clearance = chamber_bottom_z - hinge_top_z
-        assert clearance >= 0.5, (
-            f"Blind chamber / hinge clearance {clearance:.3f} mm too small; "
-            "tip block internals would intersect"
-        )
+class TestBasePlateDimensions:
+    def test_length(self):
+        assert P.BASE_LENGTH_MM == pytest.approx(200.0)
+
+    def test_width(self):
+        assert P.BASE_WIDTH_MM == pytest.approx(120.0)
+
+    def test_thickness(self):
+        assert P.BASE_THICKNESS_MM == pytest.approx(8.0)
+
+    def test_flatness_tolerance(self):
+        """Flatness ≤ 0.05 mm over full length."""
+        assert P.BASE_FLATNESS_MM == pytest.approx(0.05)
+
+    def test_material_is_6061(self):
+        assert "6061" in P.BASE_MATERIAL
+        assert "T6" in P.BASE_MATERIAL or "T6" in P.BASE_MATERIAL
 
 
-class TestFinSlot:
-    """Verify fin slot provides positive clearance for fin insertion."""
+# ═══════════════════════════════════════════════════════════════════════════════
+# T-Slot rails  (vault: CAD Design Brief § T-Slot Rails)
+# ═══════════════════════════════════════════════════════════════════════════════
 
-    def test_fin_slot_wider_than_fin(self):
-        assert P.FIN_SLOT_WIDTH_MM > P.FIN_THICKNESS_MM, (
-            "Fin slot must be wider than fin thickness for assembly"
-        )
+class TestTSlotRails:
+    def test_count(self):
+        assert P.TSLOT_COUNT == 2
 
-    def test_fin_clearance_within_range(self):
-        clearance = P.FIN_SLOT_WIDTH_MM - P.FIN_THICKNESS_MM
-        assert 0.02 <= clearance <= 0.10, (
-            f"Fin clearance {clearance:.3f} mm — too tight (<0.02) or too sloppy (>0.10)"
-        )
+    def test_opening_width(self):
+        """Slot opening (top) = 6 mm."""
+        assert P.TSLOT_OPENING_MM == pytest.approx(6.0)
+
+    def test_undercut_width(self):
+        """Undercut (wide part) = 10 mm."""
+        assert P.TSLOT_UNDERCUT_MM == pytest.approx(10.0)
+
+    def test_depth(self):
+        """Slot depth = 5 mm."""
+        assert P.TSLOT_DEPTH_MM == pytest.approx(5.0)
+
+    def test_length(self):
+        """Rail length = 180 mm."""
+        assert P.TSLOT_LENGTH_MM == pytest.approx(180.0)
+
+    def test_fit_class(self):
+        assert "H7" in P.TSLOT_FIT_CLASS
+        assert "h6" in P.TSLOT_FIT_CLASS
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sliding arms  (vault: Design Specifications § Sliding Arms)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestSlidingArms:
+    def test_count(self):
+        assert P.ARM_COUNT == 2
+
+    def test_length(self):
+        assert P.ARM_LENGTH_MM == pytest.approx(150.0)
+
+    def test_width(self):
+        assert P.ARM_WIDTH_MM == pytest.approx(25.0)
+
+    def test_thickness(self):
+        assert P.ARM_THICKNESS_MM == pytest.approx(6.0)
+
+    def test_edge_radius(self):
+        """R2.0 mm comfort radius on all external edges."""
+        assert P.ARM_EDGE_RADIUS_MM == pytest.approx(2.0)
+
+    def test_fold_guide_height(self):
+        """Raised fold-guide edge = 3 mm."""
+        assert P.ARM_FOLD_GUIDE_HEIGHT_MM == pytest.approx(3.0)
+
+    def test_tslot_engagement(self):
+        """T-tab engagement depth = 5 mm."""
+        assert P.ARM_TSLOT_ENGAGEMENT_MM == pytest.approx(5.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Angle system  (vault: Design Specifications § Angle Measurement System)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestAngleSystem:
+    def test_min_angle(self):
+        assert P.ANGLE_MIN_DEG == pytest.approx(40.0)
+
+    def test_max_angle(self):
+        assert P.ANGLE_MAX_DEG == pytest.approx(85.0)
+
+    def test_range(self):
+        assert P.ANGLE_RANGE_DEG == pytest.approx(45.0)
+
+    def test_primary_tick(self):
+        """Minor (primary) tick every 1°."""
+        assert P.ANGLE_PRIMARY_TICK_DEG == pytest.approx(1.0)
+
+    def test_major_tick(self):
+        """Major (labeled) tick every 5°."""
+        assert P.ANGLE_MAJOR_TICK_DEG == pytest.approx(5.0)
+
+    def test_vernier_resolution(self):
+        """Vernier gives 0.5° resolution."""
+        assert P.ANGLE_VERNIER_RESOLUTION_DEG == pytest.approx(0.5)
+
+    def test_vernier_length(self):
+        """Vernier scale window = 30 mm."""
+        assert P.ANGLE_VERNIER_LENGTH_MM == pytest.approx(30.0)
+
+    def test_accuracy_target(self):
+        """Angle accuracy target ≤ ±0.1°."""
+        assert P.ANGLE_ACCURACY_DEG <= 0.1
+
+    def test_min_less_than_max(self):
+        assert P.ANGLE_MIN_DEG < P.ANGLE_MAX_DEG
+
+    def test_range_exactly_45_degrees(self):
+        assert (P.ANGLE_MAX_DEG - P.ANGLE_MIN_DEG) == pytest.approx(45.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Cam locks  (vault: Design Specifications § Cam Lock Mechanism)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestCamLocks:
+    def test_count(self):
+        assert P.CAM_COUNT == 2
+
+    def test_throw_angle(self):
+        """Cam throw = 90° (quarter-turn)."""
+        assert P.CAM_THROW_DEG == pytest.approx(90.0)
+
+    def test_bolt_spec_is_m5(self):
+        assert "M5" in P.CAM_BOLT_SPEC
+
+    def test_material_is_ss316(self):
+        assert "316" in P.CAM_MATERIAL
+
+    def test_clamp_force(self):
+        """Minimum clamping force = 50 N."""
+        assert P.CAM_CLAMP_FORCE_N == pytest.approx(50.0)
+
+    def test_lever_length(self):
+        assert P.CAM_LEVER_LENGTH_MM == pytest.approx(25.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Magnetic markers  (vault: Design Specifications § Magnetic Preset System)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestMagneticMarkers:
+    def test_total_count(self):
+        assert P.MARKER_COUNT == 8
+
+    def test_color_count(self):
+        assert P.MARKER_COLOR_COUNT == 4
+
+    def test_per_color(self):
+        assert P.MARKER_PER_COLOR == 2
+
+    def test_colors_list(self):
+        assert len(P.MARKER_COLORS) == 4
+        for color in ["Red", "Blue", "Green", "Yellow"]:
+            assert color in P.MARKER_COLORS
+
+    def test_count_equals_colors_times_per_color(self):
+        assert P.MARKER_COUNT == P.MARKER_COLOR_COUNT * P.MARKER_PER_COLOR
+
+    def test_diameter(self):
+        assert P.MARKER_DIAMETER_MM == pytest.approx(6.0)
+
+    def test_height(self):
+        assert P.MARKER_HEIGHT_MM == pytest.approx(4.0)
+
+    def test_magnet_grade_n52(self):
+        assert "N52" in P.MARKER_MAGNET_GRADE
+
+    def test_pull_force(self):
+        """Pull force ≥ 0.5 kg."""
+        assert P.MARKER_PULL_FORCE_KG >= 0.5
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Filter size guides  (vault: CAD Design Brief § Filter Size Guide Circles)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFilterSizeGuides:
+    def test_01_radius(self):
+        """01 filter → R = 55 mm."""
+        assert P.FILTER_01_RADIUS_MM == pytest.approx(55.0)
+
+    def test_02_radius(self):
+        """02 filter → R = 77.5 mm."""
+        assert P.FILTER_02_RADIUS_MM == pytest.approx(77.5)
+
+    def test_03_radius(self):
+        """03 filter → R = 92.5 mm."""
+        assert P.FILTER_03_RADIUS_MM == pytest.approx(92.5)
+
+    def test_guides_dict_keys(self):
+        assert set(P.FILTER_GUIDES.keys()) == {"01", "02", "03"}
+
+    def test_guides_dict_values_match_constants(self):
+        assert P.FILTER_GUIDES["01"] == pytest.approx(P.FILTER_01_RADIUS_MM)
+        assert P.FILTER_GUIDES["02"] == pytest.approx(P.FILTER_02_RADIUS_MM)
+        assert P.FILTER_GUIDES["03"] == pytest.approx(P.FILTER_03_RADIUS_MM)
+
+    def test_radius_ordering(self):
+        """01 < 02 < 03 in radius."""
+        assert P.FILTER_01_RADIUS_MM < P.FILTER_02_RADIUS_MM < P.FILTER_03_RADIUS_MM
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Overlap scale  (vault: CAD Design Brief § Overlap Scale)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestOverlapScale:
+    def test_min(self):
+        assert P.OVERLAP_SCALE_MIN_MM == pytest.approx(0.0)
+
+    def test_max(self):
+        assert P.OVERLAP_SCALE_MAX_MM == pytest.approx(20.0)
+
+    def test_tick_spacing(self):
+        assert P.OVERLAP_SCALE_TICK_MM == pytest.approx(1.0)
+
+    def test_label_interval(self):
+        assert P.OVERLAP_SCALE_LABEL_INTERVAL_MM == pytest.approx(5.0)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PTFE strips  (vault: BOM § PTFE Slide Strip)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestPTFEStrips:
+    def test_count(self):
+        assert P.PTFE_COUNT == 2
+
+    def test_length(self):
+        assert P.PTFE_LENGTH_MM == pytest.approx(180.0)
+
+    def test_width(self):
+        assert P.PTFE_WIDTH_MM == pytest.approx(6.0)
+
+    def test_thickness(self):
+        assert P.PTFE_THICKNESS_MM == pytest.approx(0.5)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Assembly hardware  (vault: BOM)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestHardware:
+    def test_m3_shcs_qty(self):
+        assert P.FASTENER_M3_SHCS_QTY == 4
+
+    def test_m3_shcs_spec(self):
+        assert "M3" in P.FASTENER_M3_SHCS_SPEC
+
+    def test_m5_shoulder_qty(self):
+        assert P.FASTENER_M5_SHOULDER_QTY == 2
+
+    def test_m5_shoulder_spec(self):
+        assert "M5" in P.FASTENER_M5_SHOULDER_SPEC
+
+    def test_belleville_qty(self):
+        assert P.FASTENER_BELLEVILLE_QTY == 2
+
+    def test_foot_pad_count(self):
+        assert P.FOOT_PAD_COUNT == 4
+
+    def test_foot_pad_diameter(self):
+        assert P.FOOT_PAD_DIAMETER_MM == pytest.approx(8.0)
+
+    def test_foot_pad_thickness(self):
+        assert P.FOOT_PAD_THICKNESS_MM == pytest.approx(1.5)
+
+    def test_foot_pad_material_silicone(self):
+        assert "silicone" in P.FOOT_PAD_MATERIAL.lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Material specs  (vault: Design Specifications § Material Properties)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestMaterialSpecs:
+    def test_al6061_tensile_strength(self):
+        """6061-T6: tensile ≥ 290 MPa."""
+        assert P.AL6061_TENSILE_STRENGTH_MPA == pytest.approx(290.0)
+
+    def test_al6061_yield_strength(self):
+        """6061-T6: yield ≥ 240 MPa."""
+        assert P.AL6061_YIELD_STRENGTH_MPA == pytest.approx(240.0)
+
+    def test_al6061_density(self):
+        """6061-T6: density = 2.7 g/cm³."""
+        assert P.AL6061_DENSITY_G_CM3 == pytest.approx(2.7)
+
+    def test_anodize_thickness_range(self):
+        """Type III anodize: 25–50 µm."""
+        lo, hi = P.ANODIZE_TYPE_III_THICKNESS_UM
+        assert lo == pytest.approx(25.0)
+        assert hi == pytest.approx(50.0)
+
+    def test_anodize_hardness_range(self):
+        """Type III anodize: 60–70 HRC."""
+        lo, hi = P.ANODIZE_TYPE_III_HARDNESS_HRC
+        assert lo == pytest.approx(60.0)
+        assert hi == pytest.approx(70.0)
+
+    def test_finish_matrix_has_all_components(self):
+        expected = {"base_plate", "sliding_arm", "cam_body", "cam_lever",
+                    "marker", "ferrous_strip"}
+        assert expected.issubset(set(P.FINISH_MATRIX.keys()))
+
+    def test_finish_matrix_values_nonempty(self):
+        for key, value in P.FINISH_MATRIX.items():
+            assert isinstance(value, str) and len(value) > 0, (
+                f"FINISH_MATRIX['{key}'] is empty"
+            )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Tolerances
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestTolerances:
+    def test_tslot_width_tolerance(self):
+        assert P.TOL_TSLOT_WIDTH_MM == pytest.approx(0.02)
+
+    def test_flatness_tolerance(self):
+        assert P.TOL_FLATNESS_MM == pytest.approx(0.05)
+
+    def test_angle_scale_tolerance(self):
+        assert P.TOL_ANGLE_SCALE_DEG == pytest.approx(0.1)
+
+    def test_general_linear_tolerance(self):
+        assert P.TOL_LINEAR_MM == pytest.approx(0.1)

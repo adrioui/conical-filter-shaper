@@ -1,19 +1,29 @@
-# CLAUDE.md — conical-filter-shaper
+# CLAUDE.md — Universal Filter Ruler
 
-> Agent entry-point. Read this first, then `HANDOFF.md`, then `cad/params.py` for current session context and dimensions.
+> Agent entry-point. Read this first, then `cad/params.py` for current dimensions.
 
 ---
 
 ## What This Repo Is
 
-CadQuery (Python parametric CAD) source for the **Universal Conical Coffee Filter
-Shaping Tool** — a three-preset angle-indexed mandrel targeting 48° / 60° / 80°
-conical workflows with **standard pre-seamed cone papers**.
+CadQuery (Python parametric CAD) source for the **Universal Coffee Filter Ruler** —
+a flat, adjustable angle ruler for folding circular coffee filter papers into precise
+cone shapes. Two sliding aluminum arms on a flat base plate spread to any angle from
+40° to 85°, locked by eccentric cam mechanisms.
 
 Full design spec: `docs/design_spec.md`  
 Manufacturability & materials: `docs/manufacturability.md`  
-Failure modes: `docs/fmea.md`  
 Linux toolchain: `docs/toolchain_bluefin.md`
+
+---
+
+## What This Is NOT
+
+- ❌ Not a 3D cone mold, forming die, or hollow conical shell
+- ❌ Not a mandrel or angle-indexed rotary tool
+- ❌ The old "conical-filter-shaper" design has been superseded
+
+Think: **sliding T-bevel gauge** purpose-built for coffee filter folding.
 
 ---
 
@@ -23,11 +33,6 @@ Linux toolchain: `docs/toolchain_bluefin.md`
 **ALL dimensions, tolerances, and material specs live in `cad/params.py`.**  
 Never hardcode a number in a component file. Import from `params`.
 
-### 1a. V1 Paper Workflow
-**V1 assumes standard pre-seamed conical paper filters, not flat circular paper discs.**
-Use common 02-class cone papers as the reference family. Keep 60° / P2 as the primary
-workflow target; 48° and 80° remain compatibility presets pending physical validation.
-
 ### 2. Component Interface
 Every file in `cad/components/` must expose:
 ```python
@@ -36,18 +41,19 @@ def build(params=None) -> cq.Workplane:
 ```
 Every file in `cad/assemblies/` must expose:
 ```python
-def build(params=None, preset=None) -> cq.Assembly:
-    """Docstring: preset default, origin convention."""
+def build(params=None, **kwargs) -> cq.Assembly:
+    """Docstring: origin convention, sub-assemblies."""
 ```
+Stubs raise `NotImplementedError` until geometry is implemented.
 
 ### 3. Origin Conventions
 | Part | Origin | Axis |
 |------|--------|------|
-| Shell halves | Apex (hinge point) at origin | Cone axis along +Z (apex up) |
-| Tip insert block | Dimple center at origin | +Z toward button cap |
-| Cam ring | Ring center at origin | +Z = up (toward shells) |
-| Handle housing | Top face center at origin | +Z = up |
-| Full assembly | Same as handle housing | +Z = up |
+| Base plate | Bottom face center at (0,0,0) | +Z up |
+| Sliding arm | T-slot engagement midpoint at (0,0,0) | +X along arm length |
+| Cam lock | Pivot bolt axis at (0,0,0) | +Z up (lever sweeps XY plane) |
+| Magnetic marker | Bottom face center at (0,0,0) | +Z up |
+| Full assembly | Base plate bottom face center at (0,0,0) | +Z up |
 
 ### 4. Exports Are Gitignored
 `exports/` and `renders/` are never committed. Regenerate with:
@@ -60,7 +66,7 @@ python scripts/render_all.py        # PNG renders
 ```bash
 pytest tests/ -v
 ```
-If you add a new component, add a corresponding test in `tests/test_components.py`.
+Component stubs raise `NotImplementedError` → tests auto-skip via `build_or_skip()`.
 
 ---
 
@@ -79,37 +85,31 @@ pytest tests/ -v
 # Build all CAD exports (STEP / STL / SVG / DXF)
 python scripts/build_exports.py
 
-# Validate geometry (tolerance stacks, clearances, interpenetration)
+# Validate geometry
 python scripts/validate_geometry.py
 
 # Generate Bill of Materials (CSV + Excel)
 python scripts/gen_bom.py
 
-# Planned utilities (placeholders until real geometry exists)
-python scripts/gen_drawings.py
-python scripts/render_all.py
-
-# Bump revision (updates params.REVISION, CHANGELOG.md, renames staged exports)
+# Bump revision
 python scripts/bump_revision.py 0.2
 ```
 
 ---
 
-## Key Geometry (from params.py)
+## Key Geometry (from Design Spec)
 
 | Parameter | Value |
 |-----------|-------|
-| Primary paper input | Standard pre-seamed conical papers (02-class reference) |
-| Shell slant height | 82 mm (all presets) |
-| Preset 1 / 48° base radius | 33.3 mm |
-| Preset 2 / 60° base radius | 41.0 mm ← most common |
-| Preset 3 / 80° base radius | 52.7 mm → max tool width 105.4 mm |
-| Cam ring OD | 120 mm |
-| Cam ring thickness | 14 mm |
-| Handle OD | 42 mm |
-| Handle length | 65 mm |
-| Total tool height (80° preset) | ~166 mm |
-| Angle accuracy target | ±0.5° included angle |
+| Base plate | 200mm × 120mm × 8mm, 6061-T6 Al |
+| Sliding arm (×2) | 150mm × 25mm × 6mm, 6061-T6 Al |
+| Angle range | 40° – 85° continuous |
+| Angle resolution (scale) | 1° major, 0.5° vernier |
+| T-slot fit | H7/h6 |
+| Cam lock throw | 90° eccentric, ≥50 N clamp |
+| Magnetic markers | 8× Ø6mm N52, 4 colors |
+| Ferrous track strip | 180mm × 6mm × 1mm steel |
+| Flatness tolerance | 0.05mm over 200mm |
 
 ---
 
@@ -120,23 +120,41 @@ python scripts/bump_revision.py 0.2
 {assembly_name}_assy_{revision}.{ext}
 
 Examples:
-  shell_half_l_r0-1.step
-  cam_ring_r0-1.step
+  base_plate_r0-1.step
+  sliding_arm_r0-1.step
   full_assy_r0-1.step
-  overlap_fin_r0-1.dxf
-  full_assy_iso_r0-1.png
-  shell_half_l_section_r0-1.svg
+  base_plate_r0-1.dxf
 ```
 
 Rules: all lowercase, underscores, revision token = `r{major}-{minor}`.
 
 ---
 
-## Manufacturing Handoff
+## Repo Structure
 
-See `manufacturing/README.md` for how to package an RFQ.  
-Critical dimensions: `manufacturing/inspection/critical_dims_v0-1.md`  
-Indonesia sourcing: `docs/manufacturability.md` → §8.
+```
+cad/
+  params.py              ← Single source of truth for all dimensions
+  components/
+    base_plate.py        ← Flat base plate with T-slots + scale markings
+    sliding_arm.py       ← Adjustable arm (×2)
+    cam_lock.py          ← Eccentric cam lock mechanism (×2)
+    magnetic_marker.py   ← Repositionable angle-preset marker (×8)
+    ferrous_strip.py     ← Steel track strip for magnets
+    ptfe_slide_strip.py  ← Optional PTFE liner for T-slot
+  assemblies/
+    arm_assy.py          ← One arm + cam lock
+    full_assy.py         ← Base plate + both arm assemblies
+  utils/
+    ruler_math.py        ← Angle/arm geometry helpers (no CQ)
+    tolerances.py        ← ISO 286 fit helpers (no CQ)
+tests/
+  conftest.py            ← Session fixtures (params, CQ marker)
+  test_params.py         ← Ruler parameter consistency checks
+  test_tolerances.py     ← ISO 286 fit tests
+  test_components.py     ← Component build smoke tests
+  test_assemblies.py     ← Assembly build smoke tests
+```
 
 ---
 
@@ -160,5 +178,5 @@ Indonesia sourcing: `docs/manufacturability.md` → §8.
 - Commit anything under `exports/` or `renders/`
 - Hardcode mm values in `components/` or `assemblies/` files
 - Create a new part without a test in `tests/test_components.py`
-- Edit `manufacturing/drawings/*.pdf` or `manufacturing/bom/*.xlsx` directly
 - Change `params.REVISION` by hand — use `scripts/bump_revision.py`
+- Import cone-math or cone-geometry helpers — that design is retired
