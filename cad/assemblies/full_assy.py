@@ -83,15 +83,16 @@ def build(
     ValueError
         If angle_deg is outside the operating range (40°–85°).
     """
-    if cq is None:
-        raise ImportError("CadQuery is required for full_assy.build()")
-
-    # Validate angle range
+    # Validate angle range BEFORE CadQuery check
+    # This allows validation even without CadQuery installed
     if angle_deg < ANGLE_RANGE_MIN_DEG or angle_deg > ANGLE_RANGE_MAX_DEG:
         raise ValueError(
             f"angle_deg must be between {ANGLE_RANGE_MIN_DEG} and {ANGLE_RANGE_MAX_DEG}, "
             f"got {angle_deg}"
         )
+
+    if cq is None:
+        raise ImportError("CadQuery is required for full_assy.build()")
 
     # Use provided params or default
     p = params if params is not None else _default_params
@@ -100,8 +101,8 @@ def build(
     base_solid = base_plate.build(params=p)
 
     # ── Build arm assemblies ────────────────────────────────────────────────────
-    arm_left_solid = arm_assy.build(params=p, side="left")
-    arm_right_solid = arm_assy.build(params=p, side="right")
+    arm_left = arm_assy.build(params=p, side="left")
+    arm_right = arm_assy.build(params=p, side="right")
 
     # ── Build ferrous strip ─────────────────────────────────────────────────────
     ferrous_solid = ferrous_strip.build(params=p)
@@ -126,8 +127,10 @@ def build(
     # The arm_assy has its origin at pivot, extends in +X
     # Rotate about Z-axis by half_angle (positive = CCW for left arm)
     left_rotation = left_transform["rotation_deg"]
+    
+    # arm_left is a cq.Assembly, use toCompound() to get the combined solid
     assembly.add(
-        arm_left_solid.val(),
+        arm_left.toCompound(),
         name="arm_left",
         loc=cq.Location(
             cq.Vector(0, 0, p.BASE_THICKNESS_MM),  # Pivot at top of base plate
@@ -139,7 +142,7 @@ def build(
     # Position right arm assembly
     right_rotation = right_transform["rotation_deg"]
     assembly.add(
-        arm_right_solid.val(),
+        arm_right.toCompound(),
         name="arm_right",
         loc=cq.Location(
             cq.Vector(0, 0, p.BASE_THICKNESS_MM),  # Pivot at top of base plate

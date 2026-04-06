@@ -22,18 +22,18 @@ from cad.params import (
     BASE_LENGTH_MM,
     BASE_WIDTH_MM,
     BASE_THICKNESS_MM,
-    T_SLOT_OPENING_MM,
-    T_SLOT_UNDERCUT_MM,
-    T_SLOT_DEPTH_MM,
+    TSLOT_OPENING_MM,
+    TSLOT_UNDERCUT_MM,
+    TSLOT_DEPTH_MM,
     RAIL_LENGTH_MM,
     RAIL_SPACING_MM,
     ANGLE_MIN_DEG,
     ANGLE_MAX_DEG,
-    MAGNETIC_TRACK_LENGTH_MM,
-    MAGNETIC_TRACK_WIDTH_MM,
-    MAGNETIC_TRACK_DEPTH_MM,
+    MARKER_TRACK_LENGTH_MM,
+    MARKER_TRACK_WIDTH_MM,
+    MARKER_TRACK_RECESS_DEPTH_MM,
     FOOT_PAD_DIAMETER_MM,
-    FOOT_PAD_DEPTH_MM,
+    FOOT_PAD_RECESS_DEPTH_MM,
     FOOT_PAD_SPACING_X_MM,
     FOOT_PAD_SPACING_Y_MM,
     EDGE_FILLET_RADIUS_MM,
@@ -100,8 +100,8 @@ def build(params=None) -> "cq.Workplane":
         # Create T-slot cut
         slot = (
             cq.Workplane("XY")
-            .rect(T_SLOT_UNDERCUT_MM, RAIL_LENGTH_MM)
-            .extrude(-T_SLOT_DEPTH_MM)  # Cut downward into top face
+            .rect(TSLOT_UNDERCUT_MM, RAIL_LENGTH_MM)
+            .extrude(-TSLOT_DEPTH_MM)  # Cut downward into top face
         )
         
         # Position slot along rail path
@@ -118,8 +118,8 @@ def build(params=None) -> "cq.Workplane":
     # Magnetic track recess (centered, on top face)
     track_recess = (
         cq.Workplane("XY")
-        .box(MAGNETIC_TRACK_LENGTH_MM, MAGNETIC_TRACK_WIDTH_MM, MAGNETIC_TRACK_DEPTH_MM * 2, centered=True)
-        .translate((0, 0, BASE_THICKNESS_MM - MAGNETIC_TRACK_DEPTH_MM / 2))
+        .box(MARKER_TRACK_LENGTH_MM, MARKER_TRACK_WIDTH_MM, MARKER_TRACK_RECESS_DEPTH_MM * 2, centered=True)
+        .translate((0, 0, BASE_THICKNESS_MM - MARKER_TRACK_RECESS_DEPTH_MM / 2))
     )
     plate = plate.cut(track_recess)
     
@@ -132,7 +132,7 @@ def build(params=None) -> "cq.Workplane":
             foot = (
                 cq.Workplane("XY")
                 .circle(FOOT_PAD_DIAMETER_MM / 2)
-                .extrude(FOOT_PAD_DEPTH_MM * 2)
+                .extrude(FOOT_PAD_RECESS_DEPTH_MM * 2)
                 .translate((fx, fy, 0))
             )
             plate = plate.cut(foot)
@@ -152,7 +152,22 @@ def build(params=None) -> "cq.Workplane":
         ))
         plate = plate.cut(cam_pos)
     
-    # Edge fillets
-    plate = plate.edges().fillet(EDGE_FILLET_RADIUS_MM)
+    # Edge fillets - only on external edges, not on cut features
+    # Select edges that are on the original box shape
+    plate = (
+        plate
+        .edges("|Z")  # Vertical edges (sides)
+        .fillet(EDGE_FILLET_RADIUS_MM)
+    )
     
+    # Apply fillet to top and bottom edges separately to avoid complex edge issues
+    try:
+        plate = plate.edges("<Z").fillet(EDGE_FILLET_RADIUS_MM)  # Bottom edges
+    except Exception:
+        pass  # Skip if some bottom edges can't be filleted
+    
+    try:
+        plate = plate.edges(">Z").fillet(EDGE_FILLET_RADIUS_MM)  # Top edges
+    except Exception:
+        pass  # Skip if some top edges can't be filleted
     return plate

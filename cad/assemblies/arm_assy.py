@@ -73,14 +73,19 @@ def build(
     - Cam lock positioned at pivot end of arm
     - PTFE strip positioned on T-slot tongue (bottom of arm)
     """
-    if cq is None:
-        raise ImportError("CadQuery is required for arm_assy.build()")
-
+    # Validate side parameter BEFORE CadQuery check
+    # This allows validation even without CadQuery installed
     if side not in ("left", "right"):
         raise ValueError(f"side must be 'left' or 'right', got {side!r}")
 
+    if cq is None:
+        raise ImportError("CadQuery is required for arm_assy.build()")
+
     # Use provided params or default
     p = params if params is not None else _default_params
+
+    # Import cam lock constants (not in params module)
+    from cad.components.cam_lock import CAM_DISC_THICKNESS_MM
 
     # ── Build sub-components ──────────────────────────────────────────────────
 
@@ -107,10 +112,7 @@ def build(
     # Cam should sit on top of arm at the pivot end
     cam_x_offset = CAM_SLOT_CENTER_X_MM  # Center of slot on arm
     cam_y_offset = 0.0  # Centered on arm width
-    cam_z_offset = p.ARM_THICKNESS_MM + p.CAM_DISC_THICKNESS_MM / 2  # On top of arm
-
-    # Note: CAM_DISC_THICKNESS_MM is from cam_lock.py constants, not params
-    from cad.components.cam_lock import CAM_DISC_THICKNESS_MM
+    cam_z_offset = p.ARM_THICKNESS_MM + CAM_DISC_THICKNESS_MM / 2  # On top of arm
 
     assembly.add(
         cam_solid.val(),

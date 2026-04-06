@@ -110,6 +110,16 @@ TSLOT_WIDTH_TOL_MM: Final[float] = 0.02       # +0.02 / -0.00 on opening width
 TSLOT_DEPTH_TOL_MM: Final[float] = 0.05
 TSLOT_SURFACE_FINISH_RA_UM: Final[float] = 0.8
 
+# Rail geometry (derived from T-slot and base plate dimensions)
+RAIL_LENGTH_MM: Final[float] = TSLOT_LENGTH_MM  # Same as T-slot length
+RAIL_SPACING_MM: Final[float] = 80.0            # Center-to-center spacing between two rails
+
+# Base plate edge finish
+EDGE_FILLET_RADIUS_MM: Final[float] = 1.0      # Edge rounding for comfort
+
+# Cam bolt hole (M5 shoulder bolt)
+CAM_BOLT_DIAMETER_MM: Final[float] = 5.4       # M5 clearance hole (5.4mm)
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SLIDING ARMS  (part: sliding_arm.py; qty: 2)
@@ -201,6 +211,11 @@ MARKER_TRACK_RECESS_DEPTH_MM: Final[float] = 1.0
 MARKER_TRACK_INSERT_SPEC: Final[str] = "Mild steel strip 180×6×1 mm, zinc plated"
 MARKER_TRACK_CAPACITY: Final[int] = 8
 
+# Alternate names for compatibility
+MAGNETIC_TRACK_LENGTH_MM: Final[float] = MARKER_TRACK_LENGTH_MM
+MAGNETIC_TRACK_WIDTH_MM: Final[float] = MARKER_TRACK_WIDTH_MM
+MAGNETIC_TRACK_DEPTH_MM: Final[float] = MARKER_TRACK_RECESS_DEPTH_MM
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # FILTER SIZE GUIDE CIRCLES  (etched on base plate top face)
@@ -264,6 +279,8 @@ FOOT_PAD_COUNT: Final[int] = 4
 FOOT_PAD_DIAMETER_MM: Final[float] = 8.0
 FOOT_PAD_THICKNESS_MM: Final[float] = 1.5
 FOOT_PAD_RECESS_DEPTH_MM: Final[float] = 0.5  # Recessed into base (adhesive mount)
+FOOT_PAD_SPACING_X_MM: Final[float] = 160.0  # X spacing between foot pads (along length)
+FOOT_PAD_SPACING_Y_MM: Final[float] = 80.0   # Y spacing between foot pads (along width)
 FOOT_PAD_MATERIAL: Final[str] = "Silicone, adhesive-backed"
 
 
