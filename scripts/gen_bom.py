@@ -2,9 +2,18 @@
 """
 Generate Bill of Materials from cad/params.py component metadata.
 
+Bevel Gauge with Tapered Arms — Revision r3-0
+==============================================
+4-item BOM:
+  1. Tapered Arm (SS304, laser cut) ×2
+  2. M5 Shoulder Bolt (SS316) ×1
+  3. PTFE Washer 10×5.3×0.5mm ×1
+  4. M5 Knurled Thumb Screw (SS304) ×1
+  5. Cost target: ~$3.18/unit at 500 qty
+
 Outputs:
-    manufacturing/bom/bom_r{rev}.csv   (committed — text-diffable)
-    manufacturing/bom/bom_r{rev}.xlsx  (gitignored — vendor-friendly)
+    manufacturing/bom/bom_r3-0.csv   (committed — text-diffable)
+    manufacturing/bom/bom_r3-0.xlsx  (gitignored — vendor-friendly)
 
 Usage:
     python scripts/gen_bom.py
@@ -13,7 +22,7 @@ from __future__ import annotations
 import csv
 import sys
 from pathlib import Path
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
@@ -35,40 +44,56 @@ class BomRow:
     notes: str = ""
 
 
-# Universal Filter Ruler Bill of Materials
-# Reference: vault/Bill of Materials.md
+# Bevel Gauge with Tapered Arms Bill of Materials — Revision r3-0
 BOM: list[BomRow] = [
-    # ── Machined Components ──────────────────────────────────────────────────────
-    BomRow(1, "Base Plate", 1, P.BASE_MATERIAL, P.BASE_PROCESS,
-           "cad/components/base_plate.py",
-           f"{P.BASE_LENGTH_MM}×{P.BASE_WIDTH_MM}×{P.BASE_THICKNESS_MM}mm"),
-    BomRow(2, "Sliding Arm", 2, P.ARM_MATERIAL, P.ARM_PROCESS,
-           "cad/components/sliding_arm.py",
-           f"{P.ARM_LENGTH_MM}×{P.ARM_WIDTH_MM}×{P.ARM_THICKNESS_MM}mm"),
-    BomRow(3, "Cam Lock Assembly", P.CAM_COUNT, P.CAM_MATERIAL, P.CAM_LEVER_MATERIAL,
-           "cad/components/cam_lock.py",
-           f"{P.CAM_THROW_DEG}° throw, {P.CAM_LEVER_LENGTH_MM}mm lever"),
-    # ── Magnetic System ──────────────────────────────────────────────────────────
-    BomRow(4, "Magnetic Marker", P.MARKER_COUNT, P.MARKER_MATERIAL, P.MARKER_PROCESS,
-           "cad/components/magnetic_marker.py",
-           f"Ø{P.MARKER_DIAMETER_MM}×{P.MARKER_HEIGHT_MM}mm, {P.MARKER_COUNT} total (4 colors×2)"),
-    BomRow(5, "Ferrous Track Strip", 1, P.MARKER_TRACK_INSERT_SPEC, "Laser cut",
-           "cad/components/ferrous_strip.py",
-           f"{P.MARKER_TRACK_LENGTH_MM}×{P.MARKER_TRACK_WIDTH_MM}×{P.MARKER_TRACK_RECESS_DEPTH_MM}mm"),
-    # ── Sliding System ───────────────────────────────────────────────────────────
-    BomRow(6, "PTFE Slide Strip", P.PTFE_COUNT, P.PTFE_MATERIAL, "Die cut",
-           "cad/components/ptfe_slide_strip.py",
-           f"{P.PTFE_LENGTH_MM}×{P.PTFE_WIDTH_MM}×{P.PTFE_THICKNESS_MM}mm"),
-    # ── Hardware ────────────────────────────────────────────────────────────────
-    BomRow(7, "M3×8 SHCS", P.FASTENER_M3_SHCS_QTY, "SS A2-70", "Bought-in",
-           "", P.FASTENER_M3_SHCS_SPEC),
-    BomRow(8, "M5 Shoulder Bolt", P.FASTENER_M5_SHOULDER_QTY, "SS 316", "Bought-in",
-           "", P.FASTENER_M5_SHOULDER_SPEC),
-    BomRow(9, "Belleville Washer M5", P.FASTENER_BELLEVILLE_QTY, "Spring steel", "Bought-in",
-           "", P.FASTENER_BELLEVILLE_SPEC),
-    BomRow(10, "Silicone Foot Pad", P.FOOT_PAD_COUNT, P.FOOT_PAD_MATERIAL, "Bought-in",
-           "", f"Ø{P.FOOT_PAD_DIAMETER_MM}mm, adhesive-backed"),
+    # ── Primary Structure ──────────────────────────────────────────────────────
+    BomRow(
+        1,
+        "Tapered Arm",
+        2,
+        "SS304 Stainless Steel 1.2mm",
+        "Laser cut → deburr → #4 brush finish → laser etch arc marks",
+        "cad/components/ruler_arm.py",
+        f"120×(25-65)×1.2mm tapered trapezoid, pivot hole Ø{P.ARM_PIVOT_HOLE_DIA_MM}mm, "
+        f"arc marks 01/02/03, angle scale, edge radius R{P.ARM_EDGE_RADIUS_MM}mm; qty×2 = one ruler",
+    ),
+    # ── Pivot Hardware ──────────────────────────────────────────────────────────
+    BomRow(
+        2,
+        "M5 Shoulder Bolt",
+        1,
+        "SS316 Stainless Steel",
+        "Bought-in (machined)",
+        "",
+        f"Ø5mm thread, Ø{P.PIVOT_SHOULDER_DIAMETER_MM}mm shoulder, shoulder length {P.PIVOT_SHOULDER_LENGTH_MM}mm, "
+        f"{P.PIVOT_BOLT_HEAD_DIA_MM}mm head; pivot spec: {P.PIVOT_BOLT_SPEC}",
+    ),
+    BomRow(
+        3,
+        "PTFE Washer",
+        1,
+        "PTFE 10×5.3×0.5mm",
+        "Die cut",
+        "",
+        f"Ø{P.WASHER_OD_MM}mm OD, Ø{P.WASHER_ID_MM}mm ID (M5 clearance), {P.WASHER_THICKNESS_MM}mm thick; "
+        "between arms for smooth rotation, self-lubricating",
+    ),
+    BomRow(
+        4,
+        "M5 Knurled Thumbscrew",
+        1,
+        "SS304 Stainless Steel",
+        "Bought-in",
+        "cad/components/thumb_screw.py",
+        f"M5×0.8 thread, Ø{P.THUMB_SCREW_HEAD_DIAMETER_MM}mm knurled head, "
+        f"{P.THUMB_SCREW_HEAD_HEIGHT_MM}mm head height; "
+        "threads into pivot bolt to lock angle",
+    ),
 ]
+
+# ── Cost estimate ──────────────────────────────────────────────────────────────
+UNIT_COST_ESTIMATE_USD: float = 3.18  # Target at 500 qty
+UNIT_COST_CONDITION: str = "500 qty order"
 
 
 def write_csv(path: Path) -> None:
@@ -92,10 +117,17 @@ def write_xlsx(path: Path) -> None:
         for row in BOM:
             ws.append([row.item_no, row.part_name, row.qty, row.material,
                        row.process, row.source_file, row.notes])
+        # Cost summary row
+        ws.append([])
+        ws.append(["", "ESTIMATED UNIT COST", "", "", UNIT_COST_CONDITION, "", f"${UNIT_COST_ESTIMATE_USD:.2f}"])
         # Column widths
-        ws.column_dimensions["B"].width = 28
+        ws.column_dimensions["A"].width = 4
+        ws.column_dimensions["B"].width = 32
+        ws.column_dimensions["C"].width = 5
         ws.column_dimensions["D"].width = 35
-        ws.column_dimensions["G"].width = 40
+        ws.column_dimensions["E"].width = 45
+        ws.column_dimensions["F"].width = 35
+        ws.column_dimensions["G"].width = 60
         wb.save(path)
         print(f"  ✅ XLSX → {path.relative_to(ROOT)}")
     except ImportError:
@@ -104,7 +136,15 @@ def write_xlsx(path: Path) -> None:
 
 if __name__ == "__main__":
     rev = P.REVISION.replace(".", "-")
-    print(f"\nGenerating BOM — revision {P.REVISION} ({len(BOM)} rows)\n")
+    print(f"\n{'='*60}")
+    print(f"  Bevel Gauge with Tapered Arms — BOM r{P.REVISION}")
+    print(f"{'='*60}\n")
+    print(f"  Generating BOM — revision {P.REVISION} ({len(BOM)} rows)\n")
     write_csv(BOM_DIR / f"bom_r{rev}.csv")
     write_xlsx(BOM_DIR / f"bom_r{rev}.xlsx")
-    print(f"\nDone. Total unique parts: {len(BOM)}")
+    print(f"\n{'='*60}")
+    print(f"  Total unique parts: {len(BOM)}")
+    print(f"  Total parts per ruler: {sum(r.qty for r in BOM)}")
+    print(f"  Estimated unit cost: ${UNIT_COST_ESTIMATE_USD:.2f} ({UNIT_COST_CONDITION})")
+    print(f"{'='*60}\n")
+    print("Done.")
