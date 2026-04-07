@@ -1,238 +1,123 @@
-# HANDOFF.md — Universal Filter Ruler
+# HANDOFF — Universal Coffee Filter Ruler
 
-> Purpose: let a new session continue this project without losing context.
-> Date: 2026-04-06
-> Repo: `/var/home/adrifadilah/Learns/coffee/conical-filter-shaper`
+**Date**: 2026-04-07  
+**Revision**: v3.0 (Bevel Gauge with Tapered Arms)  
+**Status**: Design specified, CAD reimplementation needed
 
----
+## Current State
 
-## 1. Project Overview
+The project has gone through 3 design iterations:
 
-### Product
+| Version | Design | Status |
+|---------|--------|--------|
+| v1.0 | Flat aluminum base plate with T-slot rails + sliding arms | ❌ Abandoned |
+| v2.0 | Hinged V-shape with narrow rectangular SS304 legs (20mm × 155mm) | ❌ Abandoned |
+| **v3.0** | **Bevel gauge with tapered SS304 arms (25→65mm × 120mm)** | **✅ Specified, needs CAD** |
 
-A **precision aluminum adjustable angle ruler** for folding coffee filter papers into consistent cone shapes.
+### What's Done ✅
 
-**Key Features:**
-- Adjustable angle range: 40°–85° (included angle)
-- Vernier scale for 0.5° resolution
-- Magnetic markers for preset angle recall
-- T-slot sliding mechanism with cam lock
-- Laser-etched angle scales
+1. **Deep research** on SD1R ruler, competitive landscape, cone geometry math
+   - SD1R ruler is a flat sector-shaped SS304 plate (filter guide + dripper stand)
+   - NO adjustable filter folding tool exists on the market
+   - Bevel gauge mechanism selected as optimal (simple, proven, pocket-sized)
+   - Full research saved to Obsidian vault and `~/Learns/coffee/SD1R_RESEARCH_SYNTHESIS.md`
 
-### Tech Stack
+2. **Design specifications** written
+   - Obsidian vault: `Everything Coffee/Projects/Universal Filter Ruler/`
+     - Overview.md, Research Findings.md, Design Specifications.md, CAD Design Brief.md, Bill of Materials.md, Market Analysis.md
+   - Repo: `docs/design_spec.md`
 
-- **CadQuery** — Python-native parametric CAD
-- **pytest** — Test suite (194 tests passing)
-- **Python 3.12** — Required for CadQuery compatibility
-- **uv** — Package manager
+3. **Repo structure** exists (from v2.0)
+   - CadQuery project with tests, export scripts, params
+   - 132 tests passing (but testing OLD v2.0 geometry)
 
----
+### What Needs Doing 🔧
 
-## 2. Current State
+1. **Rewrite `cad/params.py`** for v3.0:
+   - Replace LEG_* params with ARM_* params
+   - ARM_LENGTH=120, ARM_WIDTH_NARROW=25, ARM_WIDTH_WIDE=65, ARM_THICKNESS=1.2
+   - Add ARC_01/02/03_RADIUS params (95, 116, 137mm)
+   - Remove FOLD_MARK, PIVOT_MAGNET, etc.
 
-### What's Implemented
+2. **Rename + rewrite `cad/components/ruler_leg.py` → `ruler_arm.py`**:
+   - Trapezoid shape (not rectangle)
+   - Arc groove marks (not straight V-grooves at fixed distances)
+   - Proper pivot hole positioning
 
-✅ **Components (6):**
-- `base_plate.py` — Aluminum plate with T-slots, magnetic track
-- `sliding_arm.py` — Left/right arms with vernier scale
-- `cam_lock.py` — Eccentric cam lock mechanism
-- `magnetic_marker.py` — N52 magnet in colored housing
-- `ferrous_strip.py` — Zinc-plated steel track insert
-- `ptfe_slide_strip.py` — Low-friction PTFE liner
+3. **Simplify `cad/components/pivot_hinge.py`**:
+   - Remove magnet, simplify to just shoulder bolt
+   - Or rename to pivot_bolt.py
 
-✅ **Assemblies (2):**
-- `arm_assy.py` — Arm + cam lock + PTFE strip
-- `full_assy.py` — Full ruler assembly
+4. **Update `cad/assemblies/ruler_assy.py`**:
+   - Use new tapered arms
+   - Proper Z-stacking (arm + washer + arm + screw)
+   - Angle-based rotation
 
-✅ **Tests (194):**
-- Parameter validation
-- Component dimensions
-- Assembly clearances
-- Math calculations (ruler_math.py)
+5. **Update `cad/utils/ruler_math.py`**:
+   - Add cone angle ↔ sector angle conversion
+   - Add V-opening width calculator
+   - Keep angle range validation
 
-✅ **Scripts:**
-- `build_exports.py` — Export STEP/STL/SVG/DXF
-- `gen_bom.py` — Generate bill of materials
+6. **Update all tests** for new geometry
 
-✅ **Documentation:**
-- `docs/design_spec.md` — Product specification (updated for ruler)
-- `docs/manufacturability.md` — Materials, sourcing, COGS
-- `docs/repo_structure.md` — Project structure
-- `docs/fmea.md` — Failure modes analysis
-- `docs/cadquery_modeling_plan.md` — Modeling approach
+7. **Regenerate STEP exports** (current r2-0 files are WRONG geometry)
 
----
+8. **Update `scripts/build_exports.py`** for renamed components
 
-## 3. Quick Start
-
-### Setup
-
-```bash
-cd /var/home/adrifadilah/Learns/coffee/conical-filter-shaper
-source .venv/bin/activate
-pytest tests/ -v
-python scripts/build_exports.py
-python scripts/gen_bom.py
-```
-
-### Run Tests
-
-```bash
-pytest tests/ --tb=short -q
-# Expected: 194 passed
-```
-
-### Export CAD
-
-```bash
-python scripts/build_exports.py --formats step
-# Outputs to exports/step/components/ and exports/step/assemblies/
-```
-
----
-
-## 4. Project Structure
+### What's in the Repo (File Inventory)
 
 ```
 conical-filter-shaper/
-├── cad/
-│   ├── params.py           # Design parameters
-│   ├── ruler_math.py       # Geometric calculations
-│   ├── components/        # 6 component files
-│   ├── assemblies/        # 2 assembly files
-│   └── utils/
-├── tests/
-│   ├── test_params.py
-│   ├── test_components.py
-│   ├── test_assemblies.py
-│   ├── test_ruler_math.py
-│   └── test_tolerances.py
-├── scripts/
-│   ├── build_exports.py
-│   └── gen_bom.py
-├── docs/
-│   ├── design_spec.md
-│   ├── manufacturability.md
-│   ├── repo_structure.md
-│   ├── fmea.md
-│   ├── cadquery_modeling_plan.md
-│   └── adr/
-├── manufacturing/
-│   └── bom/
-│       ├── bom_r1-0.csv
-│       └── bom_r1-0.xlsx
-└── exports/
-    └── step/
-        ├── components/     # 6 ruler components
-        └── assemblies/    # 2 ruler assemblies
+  CLAUDE.md              ← Updated for v3.0
+  README.md              ← Updated for v3.0
+  HANDOFF.md             ← This file
+  pyproject.toml         ← Build config (OK)
+  cad/
+    params.py            ← ⚠️ NEEDS REWRITE for v3.0 params
+    components/
+      ruler_leg.py       ← ⚠️ RENAME to ruler_arm.py + rewrite
+      pivot_hinge.py     ← ⚠️ SIMPLIFY (remove magnet)
+      thumb_screw.py     ← OK (keep knurled thumbscrew)
+    assemblies/
+      ruler_assy.py      ← ⚠️ UPDATE for tapered arms
+    utils/
+      ruler_math.py      ← ⚠️ ADD cone angle functions
+  tests/
+    test_components.py   ← ⚠️ UPDATE for new arm geometry
+    test_assemblies.py   ← ⚠️ UPDATE for new assembly
+    test_params.py       ← ⚠️ UPDATE for new params
+    test_ruler_math.py   ← ⚠️ UPDATE for new math functions
+  scripts/
+    build_exports.py     ← ⚠️ UPDATE component names
+    gen_bom.py           ← ⚠️ UPDATE for 4-part BOM
+  docs/
+    design_spec.md       ← Updated for v3.0
+  exports/               ← ⚠️ STALE (r2-0 = wrong geometry, delete + regenerate)
 ```
 
----
+### Key Design Parameters (v3.0)
 
-## 5. Key Design Parameters
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| ARM_LENGTH_MM | 120.0 | Pivot hole to tip |
+| ARM_WIDTH_NARROW_MM | 25.0 | At pivot end |
+| ARM_WIDTH_WIDE_MM | 65.0 | At tip end |
+| ARM_THICKNESS_MM | 1.2 | SS304 sheet |
+| ARC_01_RADIUS_MM | 95.0 | V60-01 filter size |
+| ARC_02_RADIUS_MM | 116.0 | V60-02 filter size |
+| ARC_03_RADIUS_MM | 137.0 | V60-03 filter size |
+| ANGLE_MIN_DEG | 40.0 | Minimum operating angle |
+| ANGLE_MAX_DEG | 85.0 | Maximum operating angle |
+| BOLT_SHOULDER_DIA_MM | 8.0 | M5 shoulder bolt |
+| WASHER_THICKNESS_MM | 0.5 | PTFE washer |
+| THUMB_HEAD_DIA_MM | 15.0 | Knurled thumbscrew head |
 
-From `cad/params.py`:
+### Obsidian Vault Location
 
-| Parameter | Value |
-|-----------|-------|
-| `BASE_LENGTH_MM` | 200.0 |
-| `BASE_WIDTH_MM` | 120.0 |
-| `BASE_THICKNESS_MM` | 8.0 |
-| `ARM_LENGTH_MM` | 150.0 |
-| `ARM_WIDTH_MM` | 25.0 |
-| `ARM_THICKNESS_MM` | 6.0 |
-| `ANGLE_MIN_DEG` | 40.0 |
-| `ANGLE_MAX_DEG` | 85.0 |
-| `MARKER_COUNT` | 8 |
-| `REVISION` | "1.0" |
+`~/Tooling/cognitive-vault/Everything Coffee/Projects/Universal Filter Ruler/`
 
----
+Contains 6 notes: Overview, Research Findings, Design Specifications, CAD Design Brief, Bill of Materials, Market Analysis
 
-## 6. Recent Changes (Stage6)
+### Next Action
 
-### Scripts Updated
-- `build_exports.py`— Updated for ruler components/assemblies
-- `gen_bom.py` — Updated for ruler BOM (10 rows)
-
-### Documentation Updated
-- `docs/design_spec.md` — Rewritten for Universal Filter Ruler
-- `docs/manufacturability.md` — Updated for ruler manufacturing
-- `docs/repo_structure.md` — Updated structure
-- `docs/cadquery_modeling_plan.md` — Updated for ruler
-- `docs/fmea.md` — Updated failure modes
-
-### Project Config
-- `pyproject.toml` — Changed name to "universal-filter-ruler"
-
-### Bug Fixes
-- Fixed `base_plate.py` edge fillet operation
-- Fixed `full_assy.py` Assembly.toCompound() usage
-
-### Removed
-- Cone-specific ADRs (adr-002-pom-c-for-shells.md, adr-003-ball-detent-over-snap.md)
-
----
-
-## 7. ApricotNotes
-
-### Old Cone Files Present
-
-The exports directory contains both old cone files and new ruler files. The old files remain from the previous "conical filter shaper" project. The new ruler files are:
-- `base_plate_r1-0.step`
-- `sliding_arm_r1-0.step`
-- `cam_lock_r1-0.step`
-- `magnetic_marker_r1-0.step`
-- `ferrous_strip_r1-0.step`
-- `ptfe_slide_strip_r1-0.step`
-- `arm_assy_r1-0.step`
-- `full_assy_r1-0.step`
-
-### BOM Generated
-
-```
-Generating BOM — revision 1.0 (10 rows)
-  ✅ CSV  → manufacturing/bom/bom_r1-0.csv
-  ✅ XLSX → manufacturing/bom/bom_r1-0.xlsx
-Done. Total unique parts: 10
-```
-
-### Test Results
-
-```
-194 passed, 7 warnings
-```
-
----
-
-## 8. Next Steps
-
-1. **Prototype validation** — Print or CNC prototype for physical testing
-2. **User testing** — Gather feedback on ergonomics and usability
-3. **Drawing generation** — Add technical drawings for manufacturing
-4. **Cost optimization** — Review BOM for cost reduction opportunities
-
----
-
-## 9. Key Commands
-
-```bash
-# Activate environment
-source .venv/bin/activate
-
-# Run all tests
-pytest tests/ -v
-
-# Export STEP files
-python scripts/build_exports.py --formats step
-
-# Generate BOM
-python scripts/gen_bom.py
-
-# Validate geometry
-python scripts/validate_geometry.py
-```
-
----
-
-*Last updated: 2026-04-06*  
-*Revision: 1.0*
+Implement the v3.0 CAD geometry in CadQuery. Start with `params.py`, then `ruler_arm.py`, then assembly. Run tests after each step.
