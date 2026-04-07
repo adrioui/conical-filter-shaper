@@ -1,2 +1,2 @@
-# cad.assemblies — composed CadQuery assemblies for the Universal Filter Ruler
-# Assemblies: arm_assy (sliding arm + cam lock), full_assy (base plate + arms)
+# cad.assemblies — composed CadQuery assemblies for the Universal Coffee Filter Ruler
+# Assemblies: ruler_assy (two tapered arms + pivot bolt + PTFE washer + thumb screw)
