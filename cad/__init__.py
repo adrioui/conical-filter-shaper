@@ -1,1 +1,1 @@
-# cad package — Universal Filter Ruler
+# cad package — Hinged V-Shape Filter Ruler
